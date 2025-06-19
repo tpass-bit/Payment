@@ -1,51 +1,72 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ChainPay - Web3 Wallet</title>
+  <title>Suzzy Pay - Blockchain Wallet</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #111; color: #eee; }
-    input, button { padding: 10px; margin: 5px 0; width: 100%; }
+    body {
+      font-family: sans-serif;
+      background: #111;
+      color: #eee;
+      padding: 30px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      font-size: 1em;
+    }
+    #hash { word-wrap: break-word; color: lightgreen; }
   </style>
 </head>
 <body>
 
-<h2>🔗 Blockchain Wallet Payment</h2>
-<button onclick="connectWallet()">Connect Wallet</button>
-<p id="walletAddress">Not connected</p>
+<h2>🪙 SuzzyPay - Send ETH / MATIC</h2>
+<button onclick="connectWallet()">🔌 Connect Wallet</button>
+<p id="wallet">❌ Wallet not connected</p>
 
-<h3>Send ETH / MATIC</h3>
+<hr>
+
+<h3>💸 Send Payment</h3>
 <input id="toAddress" placeholder="Receiver address (0x...)" />
-<input id="ethAmount" placeholder="Amount (e.g. 0.01)" />
-<button onclick="sendETH()">Send ETH</button>
+<input id="amount" placeholder="Amount (e.g. 0.01)" />
+<button onclick="sendPayment()">🚀 Send Payment</button>
+
+<p id="hash"></p>
 
 <script>
   let provider, signer;
 
   async function connectWallet() {
-    if (!window.ethereum) return alert("Please install MetaMask!");
+    if (!window.ethereum) {
+      alert("Install MetaMask extension!");
+      return;
+    }
     provider = new ethers.BrowserProvider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     signer = await provider.getSigner();
-    const addr = await signer.getAddress();
-    document.getElementById("walletAddress").innerText = `✅ Connected: ${addr}`;
+    const address = await signer.getAddress();
+    document.getElementById("wallet").innerText = `✅ Connected: ${address}`;
   }
 
-  async function sendETH() {
-    if (!signer) return alert("Connect wallet first.");
+  async function sendPayment() {
+    if (!signer) return alert("Please connect wallet first!");
+
     const to = document.getElementById("toAddress").value.trim();
-    const amount = document.getElementById("ethAmount").value.trim();
+    const amount = document.getElementById("amount").value.trim();
+
+    if (!ethers.isAddress(to)) return alert("Invalid address");
+
     try {
       const tx = await signer.sendTransaction({
         to: to,
         value: ethers.parseEther(amount)
       });
-      alert(`Transaction sent! Hash:\n${tx.hash}`);
-    } catch (err) {
-      alert(err.message);
+      document.getElementById("hash").innerHTML = `✅ TX Hash: <a href="https://mumbai.polygonscan.com/tx/${tx.hash}" target="_blank">${tx.hash}</a>`;
+    } catch (e) {
+      alert(e.message);
     }
   }
 </script>
