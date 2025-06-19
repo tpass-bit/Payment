@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SuzzyPay • Firebase Wallet</title>
 
-  <!-- libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@3.5.1/build/qrcode.min.js"></script>
+  <!-- libs -->
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@3.5.1/build/qrcode.min.js"></script>
 
   <!-- icons & css -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="css/style.css"/>
 </head>
 <body class="dark">
 <div class="container">
@@ -29,10 +29,7 @@
 
     <div id="walletNotFound">
       <button class="btn btn-primary btn-block" onclick="generateWallet()">
-        <i class="fas fa-random"></i> Create Wallet
-      </button>
-      <button class="btn btn-secondary btn-block" onclick="importWallet()">
-        <i class="fas fa-file-import"></i> Import Key
+        <i class="fas fa-random"></i> Create New Wallet
       </button>
     </div>
 
@@ -40,7 +37,7 @@
       <div class="form-group">
         <label>Your Address</label>
         <div class="address-display">
-          <span id="addr">...</span>
+          <span id="addr">…</span>
           <button class="copy-btn" onclick="copy('addr')"><i class="far fa-copy"></i></button>
         </div>
       </div>
@@ -54,16 +51,20 @@
   <!-- balance -->
   <div class="card hidden" id="balanceCard">
     <h2 class="card-title"><i class="fas fa-coins"></i> Balance</h2>
-    <div class="balance-display" id="bal">0 SUZ</div>
-    <button class="btn btn-primary btn-block" onclick="showBalance()"><i class="fas fa-sync-alt"></i> Refresh</button>
+    <div class="balance-display" id="bal">0 SUZ</div>
+    <button class="btn btn-primary btn-block" onclick="loadBalance()">
+      <i class="fas fa-sync-alt"></i> Refresh
+    </button>
   </div>
 
   <!-- send -->
   <div class="card hidden" id="sendCard">
     <h2 class="card-title"><i class="fas fa-paper-plane"></i> Send SUZ</h2>
-    <div class="form-group"><input id="to" placeholder="Receiver wallet (SUZ_…)" /></div>
-    <div class="form-group"><input id="amt" placeholder="Amount" type="number" step="0.01" /></div>
-    <button class="btn btn-primary btn-block" onclick="sendToken()"><i class="fas fa-paper-plane"></i> Send</button>
+    <div class="form-group"><input id="to" placeholder="Receiver SUZ_xxx"></div>
+    <div class="form-group"><input id="amt" placeholder="Amount" type="number" step="1"></div>
+    <button class="btn btn-primary btn-block" onclick="sendToken()">
+      <i class="fas fa-paper-plane"></i> Send
+    </button>
   </div>
 
   <!-- history -->
@@ -78,11 +79,9 @@
     <h2 class="card-title"><i class="fas fa-terminal"></i> Log</h2>
     <pre id="log"></pre>
   </div>
-
 </div>
 
 <script>
-/********  CONFIG  ********/
 const firebaseConfig = {
   apiKey: "AIzaSyBPF1VE82Y3VkZe6IibjqKxBC-XHjM_Wco",
   authDomain: "chat-2024-ff149.firebaseapp.com",
@@ -93,133 +92,120 @@ const firebaseConfig = {
   appId: "1:146349109253:web:e593afbf05847625"
 };
 firebase.initializeApp(firebaseConfig);
-const db      = firebase.database();
-const SYMBOL  = "SUZ";
+const db = firebase.database();
 
-/********  GLOBALS & HELPERS  ********/
-let address = null;
 const qs = id => document.getElementById(id);
-const log = (m,c="gray") => {
-  qs("log").innerHTML += `<span style="color:${c}">${new Date().toLocaleTimeString()} › ${m}</span>\n`;
+const log = (msg, color = "gray") => {
+  const time = new Date().toLocaleTimeString();
+  qs("log").innerHTML += `<span style='color:${color}'>${time} › ${msg}</span>\n`;
   qs("log").scrollTop = qs("log").scrollHeight;
 };
 const copy = id => navigator.clipboard.writeText(qs(id).innerText).then(() => log("Copied"));
 
-/********  WALLET OPS  ********/
-function generateWallet(){
-  address = "SUZ_" + Math.random().toString(36).substring(2,12);
-  localStorage.setItem("suzzypay_address", address);
-  db.ref(`wallets/${address}`).set({ balance: 1000, created: Date.now() });
-  afterWalletReady(true);
+let myWallet = null;
+
+function generateWallet() {
+  const id = 'SUZ_' + Math.random().toString(36).substr(2, 10);
+  myWallet = id;
+  localStorage.setItem('wallet_id', id);
+  db.ref('wallets/' + id).set({ balance: 1000 });
+  onWalletReady();
 }
 
-function importWallet(){
-  const a = prompt("Enter your wallet address (SUZ_…)");
-  if(!a || !a.startsWith("SUZ_")) return log("Invalid wallet address","red");
-  address = a;
-  localStorage.setItem("suzzypay_address", a);
-  db.ref(`wallets/${address}/balance`).once("value", snap => {
-    if(!snap.exists()) db.ref(`wallets/${address}/balance`).set(0);
-    afterWalletReady(false);
-  });
-}
-
-function loadSaved(){
-  const a = localStorage.getItem("suzzypay_address");
-  if(a){ address = a; afterWalletReady(false); }
-}
-
-function wipeWallet(){
-  if(confirm("Remove wallet from this device?")){
-    localStorage.removeItem("suzzypay_address");
-    location.reload();
+function loadWallet() {
+  const id = localStorage.getItem('wallet_id');
+  if (id) {
+    myWallet = id;
+    onWalletReady();
   }
 }
 
-function afterWalletReady(isNew){
-  qs("walletNotFound").classList.add("hidden");
-  qs("walletLoaded").classList.remove("hidden");
-  qs("balanceCard").classList.remove("hidden");
-  qs("sendCard").classList.remove("hidden");
-  qs("histCard").classList.remove("hidden");
+function wipeWallet() {
+  localStorage.removeItem('wallet_id');
+  location.reload();
+}
 
-  qs("addr").innerText = address;
-  QRCode.toCanvas(qs("qr"), address, { width: 180 });
-  log(isNew ? "New wallet created" : "Wallet loaded", "green");
-  showBalance();
+function onWalletReady() {
+  qs('walletNotFound').classList.add('hidden');
+  qs('walletLoaded').classList.remove('hidden');
+  qs('balanceCard').classList.remove('hidden');
+  qs('sendCard').classList.remove('hidden');
+  qs('histCard').classList.remove('hidden');
+  qs('addr').innerText = myWallet;
+  QRCode.toCanvas(qs("qr"), myWallet);
+  log("Wallet ready: " + myWallet, "green");
+  loadBalance();
   loadHistory();
 }
 
-/********  BALANCE  ********/
-function showBalance(){
-  if(!address) return;
-  db.ref(`wallets/${address}/balance`).once("value", snap => {
-    const bal = snap.val() || 0;
-    qs("bal").innerText = `${bal} ${SYMBOL}`;
-    log("Balance refreshed");
+function loadBalance() {
+  db.ref('wallets/' + myWallet + '/balance').once('value').then(snap => {
+    qs('bal').innerText = (snap.val() || 0) + " SUZ";
   });
 }
 
-/********  SEND TOKEN  ********/
-async function sendToken(){
-  const to  = qs("to").value.trim();
-  const amt = parseFloat(qs("amt").value.trim());
+function sendToken() {
+  const to = qs('to').value.trim();
+  const amt = parseInt(qs('amt').value);
 
-  if(!to.startsWith("SUZ_")) return log("Invalid recipient","red");
-  if(isNaN(amt) || amt <= 0) return log("Invalid amount","red");
-  if(!address) return log("No wallet loaded","red");
+  if (!to || !to.startsWith('SUZ_') || to === myWallet) {
+    log("Enter valid receiver ID!", 'red');
+    return;
+  }
+  if (!amt || amt <= 0) {
+    log("Enter valid amount", 'red');
+    return;
+  }
 
-  try{
-    const senderBalSnap = await db.ref(`wallets/${address}/balance`).once("value");
-    const senderBal = senderBalSnap.val() || 0;
-    if(senderBal < amt) return log("Insufficient balance","red");
+  db.ref('wallets/' + myWallet + '/balance').once('value').then(fromSnap => {
+    const senderBal = fromSnap.val() || 0;
+    if (senderBal < amt) return log("Insufficient balance", 'red');
 
-    const recvBalSnap = await db.ref(`wallets/${to}/balance`).once("value");
-    const recvBal = recvBalSnap.val() || 0;
+    db.ref('wallets/' + to + '/balance').once('value').then(toSnap => {
+      const receiverBal = toSnap.val() || 0;
 
-    const txId = db.ref().push().key;
-    const ts   = firebase.database.ServerValue.TIMESTAMP;
+      const updates = {};
+      updates['wallets/' + myWallet + '/balance'] = senderBal - amt;
+      updates['wallets/' + to + '/balance'] = receiverBal + amt;
 
-    const updates = {
-      [`wallets/${address}/balance`]: senderBal - amt,
-      [`wallets/${to}/balance`]     : recvBal + amt,
-      [`transactions/${address}/${txId}`]: { type:"sent",   to,   amount:amt, timestamp: ts },
-      [`transactions/${to}/${txId}`]    : { type:"received",from: address, amount:amt, timestamp: ts }
-    };
+      const ts = Date.now();
+      updates[`transactions/${myWallet}/${ts}`] = { to, amt, type: 'sent', ts };
+      updates[`transactions/${to}/${ts}`] = { from: myWallet, amt, type: 'received', ts };
 
-    await db.ref().update(updates);
-    log(`Sent ${amt} ${SYMBOL} to ${to.slice(0,6)}…`, "green");
-
-    qs("to").value=""; qs("amt").value="";
-    showBalance(); loadHistory();
-
-  }catch(err){ log("TX failed: "+ err.message, "red"); }
-}
-
-/********  HISTORY  ********/
-function loadHistory(){
-  qs("txList").innerHTML = "";
-  db.ref(`transactions/${address}`).once("value", snap => {
-    if(!snap.exists()) { qs("noTx").classList.remove("hidden"); return; }
-    qs("noTx").classList.add("hidden");
-
-    const txArray = Object.values(snap.val()).sort((a,b)=>b.timestamp-a.timestamp);
-    txArray.forEach(tx => {
-      const { type, to, from, amount, timestamp } = tx;
-      const other = type === "sent" ? to : from;
-      const line = `<li class='tx-item'><div>${type === "sent" ? "To:" : "From:"} ${other}<br><small>${new Date(timestamp).toLocaleString()}</small></div><div class='tx-amount ${type === "sent" ? "tx-sent":"tx-received"}'>${type === "sent" ? "-" : "+"}${amount} ${SYMBOL}</div></li>`;
-      qs("txList").innerHTML += line;
+      db.ref().update(updates).then(() => {
+        log("Transaction sent ✔", 'green');
+        qs("to").value = ""; qs("amt").value = "";
+        loadBalance(); loadHistory();
+      });
     });
   });
 }
 
-/********  INIT  ********/
-window.addEventListener("load", () => {
-  loadSaved();
+function loadHistory() {
+  db.ref('transactions/' + myWallet).once('value').then(snap => {
+    const ul = qs('txList');
+    ul.innerHTML = '';
+    if (!snap.exists()) return qs('noTx').classList.remove('hidden');
+    qs('noTx').classList.add('hidden');
+    snap.forEach(c => {
+      const tx = c.val();
+      const line = document.createElement('li');
+      line.className = 'tx-item';
+      line.innerHTML = tx.type === 'sent'
+        ? `<div><strong>To:</strong> ${tx.to}</div><div class='tx-amount tx-sent'>- ${tx.amt} SUZ</div>`
+        : `<div><strong>From:</strong> ${tx.from}</div><div class='tx-amount tx-received'>+ ${tx.amt} SUZ</div>`;
+      ul.prepend(line);
+    });
+  });
+}
+
+window.addEventListener('load', () => {
+  loadWallet();
   qs("themeToggle").onclick = () => {
     document.body.classList.toggle("light");
     const i = qs("themeToggle").firstElementChild;
-    i.classList.toggle("fa-sun"); i.classList.toggle("fa-moon");
+    i.classList.toggle("fa-sun");
+    i.classList.toggle("fa-moon");
   };
 });
 </script>
