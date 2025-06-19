@@ -694,4 +694,127 @@
 
     /* ---------- TOKEN OPS ---------- */
     async function initTokenContract() {
-      if (!w
+      if (!wallet) return;
+      tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, wallet);
+      
+      try {
+        // Get token info
+        tokenInfo.name = await tokenContract.name();
+        tokenInfo.symbol = await tokenContract.symbol();
+        tokenInfo.decimals = await tokenContract.decimals();
+        log(`Connected to token contract: ${tokenInfo.name} (${tokenInfo.symbol})`);
+      } catch (error) {
+        log("Couldn't fetch token details, using defaults", 'warning');
+      }
+    }
+
+    async function showBalance() {
+      if (!wallet) {
+        log("No wallet loaded", 'error');
+        return alert("Load or create a wallet first!");
+      }
+      
+      try {
+        const balance = await tokenContract.balanceOf(wallet.address);
+        const formattedBalance = formatBalance(balance);
+        document.getElementById('bal').textContent = `${formattedBalance} ${tokenInfo.symbol}`;
+        log(`Balance updated: ${formattedBalance} ${tokenInfo.symbol}`);
+      } catch (error) {
+        log("Balance check failed: " + error.message, 'error');
+      }
+    }
+
+    async function sendToken() {
+      if (!wallet) {
+        log("No wallet loaded", 'error');
+        return alert("Load or create a wallet first!");
+      }
+      
+      const to = document.getElementById('to').value.trim();
+      const amt = document.getElementById('amt').value.trim();
+      
+      if (!ethers.isAddress(to)) {
+        log("Invalid recipient address", 'error');
+        return alert("Please enter a valid recipient address (0x...)");
+      }
+      
+      if (!amt || isNaN(amt) || parseFloat(amt) <= 0) {
+        log("Invalid amount", 'error');
+        return alert("Please enter a valid amount greater than 0");
+      }
+      
+      try {
+        const amount = ethers.parseUnits(amt, tokenInfo.decimals);
+        log(`Sending ${amt} ${tokenInfo.symbol} to ${formatAddress(to)}...`);
+        
+        const tx = await tokenContract.transfer(to, amount);
+        log(`Transaction submitted: ${tx.hash}\nWaiting for confirmation...`);
+        
+        const receipt = await tx.wait();
+        log(`✅ Transaction confirmed in block ${receipt.blockNumber}`, 'success');
+        
+        // Add to transaction history
+        transactionHistory.unshift({
+          type: 'sent',
+          address: to,
+          amount: amt,
+          hash: tx.hash,
+          timestamp: new Date().toISOString()
+        });
+        
+        updateTransactionHistory();
+        await showBalance();
+        
+        // Clear form
+        document.getElementById('to').value = '';
+        document.getElementById('amt').value = '';
+      } catch (error) {
+        log("Transaction failed: " + error.message, 'error');
+        alert("Transaction failed: " + error.message);
+      }
+    }
+
+    /* ---------- EVENT LISTENERS ---------- */
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+    /* ---------- INIT ---------- */
+    window.addEventListener('load', async () => {
+      // Check for saved wallet
+      const pk = loadSaved();
+      if (pk) {
+        try {
+          wallet = new ethers.Wallet(pk, provider);
+          await initTokenContract();
+          showAddr();
+          showWalletInfo();
+          await showBalance();
+          log("Wallet loaded from storage", 'success');
+        } catch (error) {
+          log("Failed to load wallet: " + error.message, 'error');
+          clearKey();
+        }
+      }
+      
+      // Add some dummy transactions for demo (remove in production)
+      if (wallet && transactionHistory.length === 0) {
+        transactionHistory = [
+          {
+            type: 'received',
+            address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+            amount: '10.5',
+            hash: '0x123...abc',
+            timestamp: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+          },{
+            type: 'sent',
+            address: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
+            amount: '2.3',
+            hash: '0x456...def',
+            timestamp: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+          }
+        ];
+        updateTransactionHistory();
+      }
+    });
+  </script>
+</body>
+</html>
