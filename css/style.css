@@ -1,4 +1,3 @@
-
 :root {
   --primary: #6366f1;
   --primary-dark: #4f46e5;
@@ -275,6 +274,18 @@ body.light .tx-item {
 
 .tx-item:last-child {
   border-bottom: none;
+}
+
+.tx-amount {
+  font-weight: 700;
+}
+
+.tx-sent {
+  color: var(--danger);
+}
+
+.tx-received {
+  color: var(--success);
 }
 
 #log {
