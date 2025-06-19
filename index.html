@@ -3,386 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuzzyPay • Secure Crypto Wallet</title>
+  <title>SuzzyPay • Admin Payment System</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@3.5.1/build/qrcode.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root {
-      --primary: #6366f1;
-      --primary-dark: #4f46e5;
-      --secondary: #f43f5e;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --dark: #1e293b;
-      --light: #f8fafc;
-      --gray: #64748b;
-      --gray-light: #e2e8f0;
-      --radius: 12px;
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --transition: all 0.3s ease;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      line-height: 1.6;
-      background-color: var(--light);
-      color: var(--dark);
-      transition: var(--transition);
-    }
-
-    body.dark {
-      background-color: #0f172a;
-      color: var(--light);
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-
-    .logo i {
-      font-size: 1.8rem;
-    }
-
-    .theme-toggle {
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      cursor: pointer;
-      color: var(--gray);
-      transition: var(--transition);
-    }
-
-    .theme-toggle:hover {
-      color: var(--primary);
-    }
-
-    .card {
-      background-color: white;
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: var(--shadow);
-      transition: var(--transition);
-    }
-
-    body.dark .card {
-      background-color: #1e293b;
-      border: 1px solid #334155;
-    }
-
-    .card-title {
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: var(--radius);
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-      text-decoration: none;
-    }
-
-    .btn-primary {
-      background-color: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background-color: var(--primary-dark);
-    }
-
-    .btn-secondary {
-      background-color: var(--gray-light);
-      color: var(--dark);
-    }
-
-    body.dark .btn-secondary {
-      background-color: #334155;
-      color: var(--light);
-    }
-
-    .btn-secondary:hover {
-      background-color: #cbd5e1;
-    }
-
-    body.dark .btn-secondary:hover {
-      background-color: #475569;
-    }
-
-    .btn-danger {
-      background-color: var(--danger);
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background-color: #dc2626;
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
-
-    .btn-block {
-      width: 100%;
-    }
-
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid var(--gray-light);
-      border-radius: var(--radius);
-      font-size: 1rem;
-      transition: var(--transition);
-    }
-
-    body.dark input, body.dark select {
-      background-color: #1e293b;
-      border-color: #334155;
-      color: var(--light);
-    }
-
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-    }
-
-    .address-display {
-      font-family: monospace;
-      word-break: break-all;
-      background-color: var(--gray-light);
-      padding: 1rem;
-      border-radius: var(--radius);
-      margin: 1rem 0;
-    }
-
-    body.dark .address-display {
-      background-color: #334155;
-    }
-
-    .balance-display {
-      font-size: 2rem;
-      font-weight: 700;
-      text-align: center;
-      margin: 1rem 0;
-    }
-
-    .qr-container {
-      display: flex;
-      justify-content: center;
-      margin: 1rem 0;
-    }
-
-    #qrCode {
-      padding: 1rem;
-      background: white;
-      border-radius: var(--radius);
-    }
-
-    body.dark #qrCode {
-      background: white;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .alert {
-      padding: 1rem;
-      border-radius: var(--radius);
-      margin-bottom: 1rem;
-    }
-
-    .alert-success {
-      background-color: #d1fae5;
-      color: #065f46;
-    }
-
-    body.dark .alert-success {
-      background-color: #064e3b;
-      color: #a7f3d0;
-    }
-
-    .alert-danger {
-      background-color: #fee2e2;
-      color: #991b1b;
-    }
-
-    body.dark .alert-danger {
-      background-color: #7f1d1d;
-      color: #fecaca;
-    }
-
-    .alert-info {
-      background-color: #dbeafe;
-      color: #1e40af;
-    }
-
-    body.dark .alert-info {
-      background-color: #1e3a8a;
-      color: #bfdbfe;
-    }
-
-    .tx-list {
-      list-style: none;
-    }
-
-    .tx-item {
-      padding: 1rem;
-      border-bottom: 1px solid var(--gray-light);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    body.dark .tx-item {
-      border-bottom-color: #334155;
-    }
-
-    .tx-item:last-child {
-      border-bottom: none;
-    }
-
-    .tx-amount {
-      font-weight: 700;
-    }
-
-    .tx-sent {
-      color: var(--danger);
-    }
-
-    .tx-received {
-      color: var(--success);
-    }
-
-    .copy-btn {
-      background: none;
-      border: none;
-      color: var(--gray);
-      cursor: pointer;
-      margin-left: 0.5rem;
-    }
-
-    .copy-btn:hover {
-      color: var(--primary);
-    }
-
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid var(--gray-light);
-      margin-bottom: 1rem;
-    }
-
-    body.dark .tabs {
-      border-bottom-color: #334155;
-    }
-
-    .tab {
-      padding: 0.75rem 1.5rem;
-      cursor: pointer;
-      font-weight: 500;
-      border-bottom: 2px solid transparent;
-    }
-
-    .tab.active {
-      border-bottom-color: var(--primary);
-      color: var(--primary);
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    @media (max-width: 768px) {
-      .container {
-        padding: 1rem;
-      }
-      
-      .btn-group {
-        flex-direction: column;
-      }
-      
-      .btn {
-        width: 100%;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body class="dark">
   <div class="container">
     <header>
       <div class="logo">
         <i class="fas fa-wallet"></i>
-        <span>SuzzyPay</span>
+        <span>SuzzyPay Admin</span>
       </div>
-      <button class="theme-toggle" id="themeToggle">
-        <i class="fas fa-moon"></i>
-      </button>
+      <div class="admin-badge">
+        <i class="fas fa-shield-alt"></i> ADMIN
+      </div>
     </header>
 
-    <div id="walletSection" class="card">
-      <h2 class="card-title"><i class="fas fa-wallet"></i> Wallet Manager</h2>
-      <div id="noWallet" class="alert alert-info">
-        <p>No wallet loaded. Create a new wallet or import an existing one.</p>
+    <div class="card admin-panel">
+      <h2 class="card-title"><i class="fas fa-cog"></i> Admin Controls</h2>
+      <div class="admin-stats">
+        <div class="stat-card">
+          <div class="stat-label">Total Supply</div>
+          <div class="stat-value">23,000 SUZ</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Admin Balance</div>
+          <div class="stat-value" id="adminBalance">23,000 SUZ</div>
+        </div>
       </div>
-      <div id="walletInfo" class="hidden">
+      
+      <div class="form-group">
+        <label for="mintAmount">Mint Tokens</label>
+        <input type="number" id="mintAmount" placeholder="Amount to mint">
+        <button class="btn btn-primary btn-block" onclick="mintTokens()">
+          <i class="fas fa-coins"></i> Mint SUZ
+        </button>
+      </div>
+      
+      <div class="form-group">
+        <label for="adminRecipient">Transfer to User</label>
+        <input type="text" id="adminRecipient" placeholder="Recipient 0x...">
+        <input type="number" id="adminAmount" placeholder="Amount to send">
+        <button class="btn btn-primary btn-block" onclick="adminTransfer()">
+          <i class="fas fa-paper-plane"></i> Send SUZ
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><i class="fas fa-wallet"></i> Wallet Manager</h2>
+      <div id="walletInfo">
         <div class="form-group">
-          <label>Your Wallet Address</label>
-          <div class="address-display" id="addrDisplay">
-            <span id="addr">No wallet loaded</span>
+          <label>Admin Wallet Address</label>
+          <div class="address-display">
+            <span id="addr">0xf1f44e2dcecc3f96493c9a44725ac833d175c2a89d0d7fb229329b1a0f8a3977</span>
             <button class="copy-btn" onclick="copyToClipboard('addr')">
               <i class="far fa-copy"></i>
             </button>
@@ -391,50 +67,11 @@
         <div class="qr-container">
           <canvas id="qrCode"></canvas>
         </div>
-        <div class="btn-group">
-          <button class="btn btn-secondary" onclick="showPrivateKey()">
-            <i class="fas fa-key"></i> Show Private Key
-          </button>
-          <button class="btn btn-danger" onclick="clearWallet()">
-            <i class="fas fa-trash-alt"></i> Clear Wallet
-          </button>
-        </div>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-primary" onclick="generateWallet()">
-          <i class="fas fa-plus-circle"></i> Create New Wallet
-        </button>
-        <button class="btn btn-secondary" onclick="importWallet()">
-          <i class="fas fa-file-import"></i> Import Wallet
-        </button>
       </div>
     </div>
 
-    <div id="balanceSection" class="card hidden">
-      <h2 class="card-title"><i class="fas fa-coins"></i> Balance</h2>
-      <div class="balance-display" id="bal">0 SUZ</div>
-      <button class="btn btn-primary btn-block" onclick="showBalance()">
-        <i class="fas fa-sync-alt"></i> Refresh Balance
-      </button>
-    </div>
-
-    <div id="sendSection" class="card hidden">
-      <h2 class="card-title"><i class="fas fa-paper-plane"></i> Send Tokens</h2>
-      <div class="form-group">
-        <label for="to">Recipient Address</label>
-        <input type="text" id="to" placeholder="0x...">
-      </div>
-      <div class="form-group">
-        <label for="amt">Amount (SUZ)</label>
-        <input type="number" id="amt" placeholder="0.0" step="0.1">
-      </div>
-      <button class="btn btn-primary btn-block" onclick="sendToken()">
-        <i class="fas fa-paper-plane"></i> Send SUZ
-      </button>
-    </div>
-
-    <div id="historySection" class="card hidden">
-      <h2 class="card-title"><i class="fas fa-history"></i> Transaction History</h2>
+    <div class="card">
+      <h2 class="card-title"><i class="fas fa-exchange-alt"></i> Transaction History</h2>
       <div class="tabs">
         <div class="tab active" onclick="switchTab('allTxs')">All</div>
         <div class="tab" onclick="switchTab('sentTxs')">Sent</div>
@@ -449,63 +86,46 @@
       <div id="receivedTxs" class="tab-content">
         <ul class="tx-list" id="txListReceived"></ul>
       </div>
-      <div id="noTxs" class="alert alert-info">
-        No transactions found.
-      </div>
     </div>
 
-    <div id="logSection" class="card hidden">
-      <h2 class="card-title"><i class="fas fa-terminal"></i> Activity Log</h2>
-      <pre id="log" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
-    </div>
-  </div>
-
-  <!-- Private Key Modal -->
-  <div id="privateKeyModal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-    <div class="card" style="max-width: 500px; width: 90%;">
-      <h2 class="card-title"><i class="fas fa-key"></i> Your Private Key</h2>
-      <div class="alert alert-danger">
-        <p><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Never share this private key with anyone! Anyone with this key can access your funds.</p>
-      </div>
-      <div class="address-display" id="privateKeyDisplay"></div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" onclick="copyToClipboard('privateKeyDisplay')">
-          <i class="far fa-copy"></i> Copy
-        </button>
-        <button class="btn btn-primary" onclick="hidePrivateKey()">
-          <i class="fas fa-times"></i> Close
-        </button>
-      </div>
+    <div class="card">
+      <h2 class="card-title"><i class="fas fa-terminal"></i> System Log</h2>
+      <pre id="log">System initialized. Admin wallet loaded with 23,000 SUZ.</pre>
     </div>
   </div>
 
   <script>
     /* ---------- CONFIG ---------- */
-    const RPC_URL = "https://polygon-mumbai.g.alchemy.com/v2/demo"; // replace with your Alchemy/Infura key
-    const TOKEN_ADDRESS = "0xYourTokenAddress"; // <— paste your ERC-20 contract address
+    const RPC_URL = "https://polygon-mumbai.g.alchemy.com/v2/demo";
+    const TOKEN_ADDRESS = "0xYourTokenAddress"; // Replace with your contract
     const TOKEN_ABI = [
+      // Standard ERC-20
       "function name() view returns (string)",
       "function symbol() view returns (string)",
       "function decimals() view returns (uint8)",
       "function balanceOf(address) view returns (uint256)",
       "function transfer(address to, uint amount) returns (bool)",
+      "function totalSupply() view returns (uint256)",
+      
+      // Mintable functions (your contract needs these)
+      "function mint(address to, uint amount) returns (bool)",
+      "function owner() view returns (address)",
+      
+      // Events
       "event Transfer(address indexed from, address indexed to, uint amount)"
     ];
-    const TOKEN_DECIMALS = 18;
-    const TOKEN_SYMBOL = "SUZ";
+    
+    // Admin configuration
+    const ADMIN_ADDRESS = "0xf1f44e2dcecc3f96493c9a44725ac833d175c2a89d0d7fb229329b1a0f8a3977";
+    const INITIAL_SUPPLY = ethers.parseUnits("23000", 18);
 
     /* ---------- GLOBALS ---------- */
     const provider = new ethers.JsonRpcProvider(RPC_URL);
-    let wallet; // ethers.Wallet instance
-    let tokenContract; // ERC-20 token contract instance
-    let tokenInfo = {
-      name: TOKEN_SYMBOL,
-      symbol: TOKEN_SYMBOL,
-      decimals: TOKEN_DECIMALS
-    };
+    let wallet; // Will hold our admin wallet
+    let tokenContract;
     let transactionHistory = [];
 
-    /* ---------- UTILS ---------- */
+    /* ---------- UTILITIES ---------- */
     const log = (message, type = 'info') => {
       const logElement = document.getElementById('log');
       const timestamp = new Date().toLocaleTimeString();
@@ -513,10 +133,6 @@
       logElement.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
       logElement.scrollTop = logElement.scrollHeight;
     };
-
-    const saveKey = (pk) => localStorage.setItem("suzzypay_pk", pk);
-    const loadSaved = () => localStorage.getItem("suzzypay_pk");
-    const clearKey = () => localStorage.removeItem("suzzypay_pk");
 
     const copyToClipboard = (elementId) => {
       const element = document.getElementById(elementId);
@@ -532,63 +148,139 @@
       return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
     };
 
-    const formatBalance = (balance) => {
-      return parseFloat(ethers.formatUnits(balance, tokenInfo.decimals)).toFixed(4);
-    };
-
-    /* ---------- UI FUNCTIONS ---------- */
-    function toggleTheme() {
-      document.body.classList.toggle('dark');
-      const icon = document.querySelector('#themeToggle i');
-      if (document.body.classList.contains('dark')) {
-        icon.classList.remove('fa-moon');
-        icon.classList.add('fa-sun');
-      } else {
-        icon.classList.remove('fa-sun');
-        icon.classList.add('fa-moon');
+    /* ---------- ADMIN FUNCTIONS ---------- */
+    async function initializeAdmin() {
+      try {
+        // Initialize wallet (in a real app, you would use a more secure method)
+        wallet = new ethers.Wallet(ADMIN_ADDRESS, provider);
+        
+        // Initialize token contract
+        tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, wallet);
+        
+        // Generate QR code
+        QRCode.toCanvas(document.getElementById('qrCode'), wallet.address, {
+          width: 200,
+          margin: 2,
+          color: {
+            dark: '#ffffff',
+            light: '#00000000'
+          }
+        });
+        
+        // Load initial transaction history
+        loadInitialTransactions();
+        updateTransactionHistory();
+        
+        log("Admin system initialized successfully", 'success');
+      } catch (error) {
+        log("Initialization error: " + error.message, 'error');
       }
     }
 
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      document.getElementById(tabId).classList.add('active');
-      document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
-    }
-
-    function showPrivateKey() {
-      if (!wallet) return;
-      document.getElementById('privateKeyDisplay').textContent = wallet.privateKey;
-      document.getElementById('privateKeyModal').classList.remove('hidden');
-    }
-
-    function hidePrivateKey() {
-      document.getElementById('privateKeyModal').classList.add('hidden');
-    }
-
-    function showWalletInfo() {
-      document.getElementById('noWallet').classList.add('hidden');
-      document.getElementById('walletInfo').classList.remove('hidden');
-      document.getElementById('balanceSection').classList.remove('hidden');
-      document.getElementById('sendSection').classList.remove('hidden');
-      document.getElementById('historySection').classList.remove('hidden');
-      document.getElementById('logSection').classList.remove('hidden');
+    async function mintTokens() {
+      const amountInput = document.getElementById('mintAmount').value.trim();
+      if (!amountInput || isNaN(amountInput)) {
+        log("Invalid mint amount", 'error');
+        return;
+      }
       
-      // Generate QR code
-      QRCode.toCanvas(document.getElementById('qrCode'), wallet.address, {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: document.body.classList.contains('dark') ? '#ffffff' : '#000000',
-          light: '#00000000'
+      try {
+        const amount = ethers.parseUnits(amountInput, 18);
+        log(`Minting ${amountInput} SUZ...`);
+        
+        // Check if we're the owner (your contract needs to have owner() function)
+        const owner = await tokenContract.owner();
+        if (owner.toLowerCase() !== wallet.address.toLowerCase()) {
+          throw new Error("Only contract owner can mint tokens");
         }
-      }, (error) => {
-        if (error) log("QR code generation failed: " + error, 'error');
-      });
+        
+        const tx = await tokenContract.mint(wallet.address, amount);
+        await tx.wait();
+        
+        log(`✅ Successfully minted ${amountInput} SUZ`, 'success');
+        updateAdminBalance();
+        
+        // Add to transaction history
+        transactionHistory.unshift({
+          type: 'received',
+          address: 'System Mint',
+          amount: amountInput,
+          hash: tx.hash,
+          timestamp: new Date().toISOString()
+        });
+        
+        updateTransactionHistory();
+      } catch (error) {
+        log("Minting failed: " + error.message, 'error');
+      }
+    }
+
+    async function adminTransfer() {
+      const to = document.getElementById('adminRecipient').value.trim();
+      const amountInput = document.getElementById('adminAmount').value.trim();
+      
+      if (!ethers.isAddress(to)) {
+        log("Invalid recipient address", 'error');
+        return;
+      }
+      
+      if (!amountInput || isNaN(amountInput)) {
+        log("Invalid amount", 'error');
+        return;
+      }
+      
+      try {
+        const amount = ethers.parseUnits(amountInput, 18);
+        log(`Sending ${amountInput} SUZ to ${formatAddress(to)}...`);
+        
+        const tx = await tokenContract.transfer(to, amount);
+        await tx.wait();
+        
+        log(`✅ Successfully sent ${amountInput} SUZ`, 'success');
+        updateAdminBalance();
+        
+        // Add to transaction history
+        transactionHistory.unshift({
+          type: 'sent',
+          address: to,
+          amount: amountInput,
+          hash: tx.hash,
+          timestamp: new Date().toISOString()
+        });
+        
+        updateTransactionHistory();
+        
+        // Clear form
+        document.getElementById('adminRecipient').value = '';
+        document.getElementById('adminAmount').value = '';
+      } catch (error) {
+        log("Transfer failed: " + error.message, 'error');
+      }
+    }
+
+    async function updateAdminBalance() {
+      try {
+        const balance = await tokenContract.balanceOf(wallet.address);
+        const formattedBalance = ethers.formatUnits(balance, 18);
+        document.getElementById('adminBalance').textContent = 
+          `${parseFloat(formattedBalance).toLocaleString()} SUZ`;
+      } catch (error) {
+        log("Balance update failed: " + error.message, 'error');
+      }
+    }
+
+    /* ---------- TRANSACTION HISTORY ---------- */
+    function loadInitialTransactions() {
+      // Initial demo transactions
+      transactionHistory = [
+        {
+          type: 'received',
+          address: 'System Genesis',
+          amount: '23000',
+          hash: '0x000...genesis',
+          timestamp: new Date().toISOString()
+        }
+      ];
     }
 
     function updateTransactionHistory() {
@@ -599,13 +291,6 @@
       txListAll.innerHTML = '';
       txListSent.innerHTML = '';
       txListReceived.innerHTML = '';
-      
-      if (transactionHistory.length === 0) {
-        document.getElementById('noTxs').classList.remove('hidden');
-        return;
-      }
-      
-      document.getElementById('noTxs').classList.add('hidden');
       
       transactionHistory.forEach(tx => {
         const listItem = document.createElement('li');
@@ -619,7 +304,7 @@
         
         const txAmount = document.createElement('div');
         txAmount.className = `tx-amount ${tx.type === 'sent' ? 'tx-sent' : 'tx-received'}`;
-        txAmount.innerHTML = `${tx.type === 'sent' ? '-' : '+'}${tx.amount} ${tokenInfo.symbol}`;
+        txAmount.innerHTML = `${tx.type === 'sent' ? '-' : '+'}${tx.amount} SUZ`;
         
         listItem.appendChild(txDetails);
         listItem.appendChild(txAmount);
@@ -634,186 +319,21 @@
       });
     }
 
-    /* ---------- WALLET OPS ---------- */
-    async function generateWallet() {
-      try {
-        wallet = ethers.Wallet.createRandom().connect(provider);
-        saveKey(wallet.privateKey);
-        await initTokenContract();
-        showAddr();
-        showWalletInfo();
-        await showBalance();
-        log("New wallet generated. Save your private key in a secure place!", 'success');
-      } catch (error) {
-        log("Wallet generation failed: " + error.message, 'error');
-      }
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.getElementById(tabId).classList.add('active');
+      document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
     }
 
-    async function importWallet() {
-      const pk = prompt("Paste your 0x… private key:");
-      if (!pk || !pk.startsWith("0x") || pk.length !== 66) {
-        log("Invalid private key format", 'error');
-        return alert("Invalid private key. It should start with 0x and be 66 characters long.");
-      }
-      
-      try {
-        wallet = new ethers.Wallet(pk, provider);
-        saveKey(pk);
-        await initTokenContract();
-        showAddr();
-        showWalletInfo();
-        await showBalance();
-        log("Wallet imported successfully!", 'success');
-      } catch (error) {
-        log("Wallet import failed: " + error.message, 'error');
-      }
-    }
-
-    function clearWallet() {
-      if (!confirm("Are you sure you want to clear the current wallet from this device?\n\nMake sure you have backed up your private key first!")) {
-        return;
-      }
-      wallet = null;
-      clearKey();
-      document.getElementById('noWallet').classList.remove('hidden');
-      document.getElementById('walletInfo').classList.add('hidden');
-      document.getElementById('balanceSection').classList.add('hidden');
-      document.getElementById('sendSection').classList.add('hidden');
-      document.getElementById('historySection').classList.add('hidden');
-      document.getElementById('logSection').classList.add('hidden');
-      document.getElementById('addr').textContent = 'No wallet loaded';
-      document.getElementById('bal').textContent = '0 SUZ';
-      log("Wallet cleared from browser.", 'info');
-    }
-
-    function showAddr() {
-      if (!wallet) return;
-      document.getElementById('addr').textContent = wallet.address;
-      document.getElementById('addrDisplay').textContent = wallet.address;
-    }
-
-    /* ---------- TOKEN OPS ---------- */
-    async function initTokenContract() {
-      if (!wallet) return;
-      tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, wallet);
-      
-      try {
-        // Get token info
-        tokenInfo.name = await tokenContract.name();
-        tokenInfo.symbol = await tokenContract.symbol();
-        tokenInfo.decimals = await tokenContract.decimals();
-        log(`Connected to token contract: ${tokenInfo.name} (${tokenInfo.symbol})`);
-      } catch (error) {
-        log("Couldn't fetch token details, using defaults", 'warning');
-      }
-    }
-
-    async function showBalance() {
-      if (!wallet) {
-        log("No wallet loaded", 'error');
-        return alert("Load or create a wallet first!");
-      }
-      
-      try {
-        const balance = await tokenContract.balanceOf(wallet.address);
-        const formattedBalance = formatBalance(balance);
-        document.getElementById('bal').textContent = `${formattedBalance} ${tokenInfo.symbol}`;
-        log(`Balance updated: ${formattedBalance} ${tokenInfo.symbol}`);
-      } catch (error) {
-        log("Balance check failed: " + error.message, 'error');
-      }
-    }
-
-    async function sendToken() {
-      if (!wallet) {
-        log("No wallet loaded", 'error');
-        return alert("Load or create a wallet first!");
-      }
-      
-      const to = document.getElementById('to').value.trim();
-      const amt = document.getElementById('amt').value.trim();
-      
-      if (!ethers.isAddress(to)) {
-        log("Invalid recipient address", 'error');
-        return alert("Please enter a valid recipient address (0x...)");
-      }
-      
-      if (!amt || isNaN(amt) || parseFloat(amt) <= 0) {
-        log("Invalid amount", 'error');
-        return alert("Please enter a valid amount greater than 0");
-      }
-      
-      try {
-        const amount = ethers.parseUnits(amt, tokenInfo.decimals);
-        log(`Sending ${amt} ${tokenInfo.symbol} to ${formatAddress(to)}...`);
-        
-        const tx = await tokenContract.transfer(to, amount);
-        log(`Transaction submitted: ${tx.hash}\nWaiting for confirmation...`);
-        
-        const receipt = await tx.wait();
-        log(`✅ Transaction confirmed in block ${receipt.blockNumber}`, 'success');
-        
-        // Add to transaction history
-        transactionHistory.unshift({
-          type: 'sent',
-          address: to,
-          amount: amt,
-          hash: tx.hash,
-          timestamp: new Date().toISOString()
-        });
-        
-        updateTransactionHistory();
-        await showBalance();
-        
-        // Clear form
-        document.getElementById('to').value = '';
-        document.getElementById('amt').value = '';
-      } catch (error) {
-        log("Transaction failed: " + error.message, 'error');
-        alert("Transaction failed: " + error.message);
-      }
-    }
-
-    /* ---------- EVENT LISTENERS ---------- */
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
-    /* ---------- INIT ---------- */
+    /* ---------- INITIALIZATION ---------- */
     window.addEventListener('load', async () => {
-      // Check for saved wallet
-      const pk = loadSaved();
-      if (pk) {
-        try {
-          wallet = new ethers.Wallet(pk, provider);
-          await initTokenContract();
-          showAddr();
-          showWalletInfo();
-          await showBalance();
-          log("Wallet loaded from storage", 'success');
-        } catch (error) {
-          log("Failed to load wallet: " + error.message, 'error');
-          clearKey();
-        }
-      }
-      
-      // Add some dummy transactions for demo (remove in production)
-      if (wallet && transactionHistory.length === 0) {
-        transactionHistory = [
-          {
-            type: 'received',
-            address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-            amount: '10.5',
-            hash: '0x123...abc',
-            timestamp: new Date(Date.now() - 86400000).toISOString() // 1 day ago
-          },{
-            type: 'sent',
-            address: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
-            amount: '2.3',
-            hash: '0x456...def',
-            timestamp: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
-          }
-        ];
-        updateTransactionHistory();
-      }
+      await initializeAdmin();
+      await updateAdminBalance();
     });
   </script>
 </body>
