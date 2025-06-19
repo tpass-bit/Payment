@@ -14,16 +14,12 @@
   <!-- crypto‑js for PIN hashing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
-  <!-- icons & style -->
+  <!-- fonts & icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- styles -->
   <link rel="stylesheet" href="css/style.css" />
-
-  <style>
-    /* tiny style tweaks for scanner modal */
-    #scannerModal{position:fixed;inset:0;background:#000a;display:none;justify-content:center;align-items:center;z-index:9999}
-    #scanner{width:300px;height:300px;background:#000}
-    #scannerClose{margin-top:8px}
-  </style>
 </head>
 <body class="dark">
 <div class="container">
@@ -72,6 +68,11 @@
   <!-- History -->
   <div class="card hidden" id="histCard">
     <h2 class="card-title"><i class="fas fa-history"></i> History</h2>
+    <div class="history-tabs">
+      <button class="tab-btn active" onclick="showHistoryTab('all')">All</button>
+      <button class="tab-btn" onclick="showHistoryTab('sent')">Sent</button>
+      <button class="tab-btn" onclick="showHistoryTab('received')">Received</button>
+    </div>
     <ul class="tx-list" id="txList"></ul>
     <div id="noTx" class="alert alert-info">No transactions yet.</div>
   </div>
@@ -79,190 +80,40 @@
   <!-- Log -->
   <div class="card" id="logCard">
     <h2 class="card-title"><i class="fas fa-terminal"></i> Log</h2>
-    <pre id="log" style="max-height:150px;overflow:auto"></pre>
+    <pre id="log"></pre>
   </div>
 </div>
 
 <!-- Scanner Modal -->
-<div id="scannerModal" class="flex-col">
-  <div id="scanner"></div>
-  <button class="btn btn-danger" id="scannerClose" onclick="closeScanner()">Close</button>
+<div id="scannerModal" class="modal">
+  <div class="modal-content">
+    <div id="scanner"></div>
+    <button class="btn btn-danger" id="scannerClose" onclick="closeScanner()">Close</button>
+  </div>
 </div>
 
-<script>
-/* Firebase */
-const firebaseConfig={apiKey:"AIzaSyBPF1VE82Y3VkZe6IibjqKxBC-XHjM_Wco",authDomain:"chat-2024-ff149.firebaseapp.com",databaseURL:"https://chat-2024-ff149-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"chat-2024-ff149",storageBucket:"chat-2024-ff149.appspot.com",messagingSenderId:"146349109253",appId:"1:146349109253:web:e593afbf05847625"};
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+<!-- Payment Success Overlay -->
+<div id="paymentSuccess" class="payment-overlay hidden">
+  <div class="payment-content">
+    <div class="success-animation">
+      <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+        <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+        <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+      </svg>
+      <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+      </div>
+    </div>
+    <h2>Payment Successful!</h2>
+    <p id="successMessage">Your transaction has been completed</p>
+    <button class="btn btn-primary" onclick="hidePaymentSuccess()">Done</button>
+  </div>
+</div>
 
-/* helpers */
-const qs=id=>document.getElementById(id);
-const SYMBOL="SUZ";
-let wallet=null; // object {addr,pinHash}
-
-const log=(msg,color="gray")=>{
- const t=new Date().toLocaleTimeString();
- qs("log").innerHTML+=`<span style='color:${color}'>${t} › ${msg}</span>\n`;
- qs("log").scrollTop=qs("log").scrollHeight;
- if(wallet) db.ref("logs/"+wallet.addr).push({msg,color,time:Date.now()});
-};
-const copy=id=>navigator.clipboard.writeText(qs(id).innerText).then(()=>log("Copied"));
-
-/* ---------- Wallet Creation / Restore ---------- */
-function createOrLoadUniqueWallet(){
- if(localStorage.getItem("wallet_json")) return loadWalletFromStorage();
- const addr="SUZ_"+Math.random().toString(36).slice(2,10);
- const pin=prompt("Set a 4‑digit PIN");
- if(!/^\d{4}$/.test(pin)) return alert("PIN must be 4 digits");
- const pinHash=CryptoJS.SHA256(pin).toString();
- wallet={addr,pinHash};
- localStorage.setItem("wallet_json",JSON.stringify(wallet));
- db.ref("wallets/"+addr).set({balance:1000,pinHash});
- onWalletReady();
-}
-
-function loadWalletFromStorage(){
- const json=localStorage.getItem("wallet_json");
- if(!json) return;
- wallet=JSON.parse(json);
- onWalletReady();
-}
-
-function importBackup(){
- try{
-   const json=qs("importKey").value.trim();
-   if(!json) return alert("Paste backup JSON");
-   wallet=JSON.parse(json);
-   if(!wallet.addr||!wallet.pinHash) return alert("Invalid backup");
-   localStorage.setItem("wallet_json",json);
-   db.ref("wallets/"+wallet.addr).once("value",snap=>{
-     if(!snap.exists()) db.ref("wallets/"+wallet.addr).set({balance:0,pinHash:wallet.pinHash});
-     onWalletReady();
-   });
- }catch(e){alert("Bad JSON")}
-}
-
-function exportBackup(){
- const blob=new Blob([JSON.stringify(wallet)],{type:"application/json"});
- const a=document.createElement("a");
- a.href=URL.createObjectURL(blob);
- a.download=wallet.addr+"_backup.json";
- a.click();
-}
-
-function wipeWallet(){
- if(confirm("Forget wallet on this device?")){
-   localStorage.removeItem("wallet_json");
-   location.reload();
- }
-}
-
-function onWalletReady(){
- qs("walletNotFound").classList.add("hidden");
- qs("walletLoaded").classList.remove("hidden");
- qs("balanceCard").classList.remove("hidden");
- qs("sendCard").classList.remove("hidden");
- qs("histCard").classList.remove("hidden");
- qs("addr").innerText=wallet.addr;
- QRCode.toCanvas(qs("qr"),wallet.addr);
- loadBalance();
- loadHistory();
- loadLogHistory();
- log("Wallet ready: "+wallet.addr,"green");
-}
-
-/* ---------- Balance & History ---------- */
-function loadBalance(){
- db.ref("wallets/"+wallet.addr+"/balance").once("value",snap=>qs("bal").innerText=(snap.val()||0)+" "+SYMBOL);
-}
-
-function loadHistory(){
- const ul=qs("txList"); ul.innerHTML="";
- db.ref("transactions/"+wallet.addr).orderByChild("ts").limitToLast(50).once("value",snap=>{
-   if(!snap.exists()) return qs("noTx").classList.remove("hidden");
-   qs("noTx").classList.add("hidden");
-   Object.values(snap.val()).reverse().forEach(tx=>{
-     const li=document.createElement("li");
-     li.className="tx-item";
-     li.innerHTML=tx.type==="sent"?
-       `<div><strong>To:</strong> ${tx.to}</div><div class='tx-amount tx-sent'>- ${tx.amt} ${SYMBOL}</div>`:
-       `<div><strong>From:</strong> ${tx.from}</div><div class='tx-amount tx-received'>+ ${tx.amt} ${SYMBOL}</div>`;
-     ul.appendChild(li);
-   });
- });
-}
-
-function loadLogHistory(){
- qs("log").innerHTML="";
- db.ref("logs/"+wallet.addr).limitToLast(100).once("value",snap=>{
-   if(!snap.exists()) return;
-   snap.forEach(c=>{
-     const {msg,color,time}=c.val();
-     const t=new Date(time).toLocaleTimeString();
-     qs("log").innerHTML+=`<span style='color:${color}'>${t} › ${msg}</span>\n`;
-   });
-   qs("log").scrollTop=qs("log").scrollHeight;
- });
-}
-
-/* ---------- Send Token with PIN ---------- */
-function sendToken(){
- const to=qs("to").value.trim();
- const amt=parseInt(qs("amt").value);
- if(!to.startsWith("SUZ_")) return log("Enter valid receiver ID!","red");
- if(to===wallet.addr) return log("Cannot send to self","red");
- if(!amt||amt<=0) return log("Enter valid amount","red");
- const pin=prompt("Enter 4‑digit PIN to confirm");
- if(CryptoJS.SHA256(pin||"").toString()!==wallet.pinHash) return log("Incorrect PIN","red");
-
- db.ref("wallets/"+wallet.addr+"/balance").once("value",snap=>{
-   const bal=snap.val()||0;
-   if(bal<amt) return log("Insufficient balance","red");
-   db.ref("wallets/"+to+"/balance").once("value",snap2=>{
-     const balTo=snap2.val()||0;
-     const ts=Date.now();
-     const upd={};
-     upd[`wallets/${wallet.addr}/balance`]=bal-amt;
-     upd[`wallets/${to}/balance`]=balTo+amt;
-     upd[`transactions/${wallet.addr}/${ts}`]={type:"sent",to,amt,ts};
-     upd[`transactions/${to}/${ts}`]={type:"received",from:wallet.addr,amt,ts};
-     db.ref().update(upd).then(()=>{
-       log(`Sent ${amt} ${SYMBOL} to ${to}`,'green');
-       qs("to").value=""; qs("amt").value="";
-       loadBalance(); loadHistory();
-     });
-   });
- });
-}
-
-/* ---------- QR Scanner ---------- */
-let html5Qr=null;
-function openScanner(){
- qs("scannerModal").style.display="flex";
- if(!html5Qr){
-   html5Qr=new Html5Qrcode("scanner");
- }
- html5Qr.start({facingMode:"environment"},{fps:10,qrbox:250},
-   code=>{
-     if(code.startsWith("SUZ_")){
-       qs("to").value=code;
-       closeScanner();
-     }
-   },err=>{});
-}
-function closeScanner(){
-  html5Qr.stop().then(()=>qs("scannerModal").style.display="none");
-}
-
-/* ---------- Theme & Init ---------- */
-window.addEventListener("load",()=>{
-  loadWalletFromStorage();
-  qs("themeToggle").onclick=()=>{
-    document.body.classList.toggle("light");
-    const i=qs("themeToggle").firstElementChild;
-    i.classList.toggle("fa-sun"); i.classList.toggle("fa-moon");
-  };
-});
-</script>
+<script src="js/app.js"></script>
 </body>
 </html>
