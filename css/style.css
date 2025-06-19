@@ -54,6 +54,22 @@ body.light {
   50% { transform: scale(1.02); box-shadow: 0 0 24px rgba(99, 102, 241, 0.4); }
 }
 
+@keyframes checkmark-circle {
+  0% { stroke-dashoffset: 166; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes checkmark {
+  0% { stroke-dashoffset: 48; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes particle {
+  0% { transform: translateY(0) scale(0); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(-100px) scale(1); opacity: 0; }
+}
+
 /* ---------- Header & Navigation ---------- */
 header {
   display: flex;
@@ -137,7 +153,7 @@ body.light .card:hover {
 }
 
 /* ---------- Form Elements ---------- */
-.input-group {
+.form-group {
   margin-bottom: 1.25rem;
   position: relative;
 }
@@ -279,6 +295,28 @@ body.light input:focus {
 }
 
 /* ---------- Transaction History ---------- */
+.history-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tab-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.875rem;
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
 .tx-list {
   list-style: none;
   padding: 0;
@@ -334,6 +372,152 @@ pre#log {
   border-left: 4px solid var(--accent);
 }
 
+/* ---------- Modals & Overlays ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+}
+
+.modal-content {
+  background: var(--card-bg-dark);
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  max-width: 90%;
+  width: 400px;
+  text-align: center;
+}
+
+#scanner {
+  width: 300px;
+  height: 300px;
+  background: #000;
+  margin: 0 auto 1rem;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.payment-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(10px);
+}
+
+.payment-content {
+  text-align: center;
+  max-width: 90%;
+  width: 400px;
+  padding: 2rem;
+  background: var(--card-bg-dark);
+  border-radius: var(--border-radius);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.success-animation {
+  position: relative;
+  margin: 0 auto 2rem;
+  width: 120px;
+  height: 120px;
+}
+
+.checkmark {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 4;
+  stroke: #4bb71b;
+  stroke-miterlimit: 10;
+  margin: 0 auto;
+  box-shadow: inset 0 0 0 rgba(75, 183, 27, 0.4);
+  animation: checkmark-circle 0.6s ease-in-out, checkmark 0.3s 0.5s ease-in-out forwards;
+}
+
+.checkmark__circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 4;
+  stroke-miterlimit: 10;
+  stroke: #4bb71b;
+  fill: none;
+  animation: checkmark-circle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark__check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: checkmark 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+}
+
+.particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.particle {
+  position: absolute;
+  background: #4bb71b;
+  border-radius: 50%;
+  animation: particle 1s ease-out infinite;
+}
+
+.particle:nth-child(1) {
+  width: 10px;
+  height: 10px;
+  left: 20%;
+  top: 40%;
+  animation-delay: 0.1s;
+}
+
+.particle:nth-child(2) {
+  width: 8px;
+  height: 8px;
+  left: 30%;
+  top: 50%;
+  animation-delay: 0.3s;
+}
+
+.particle:nth-child(3) {
+  width: 12px;
+  height: 12px;
+  left: 50%;
+  top: 30%;
+  animation-delay: 0.2s;
+}
+
+.particle:nth-child(4) {
+  width: 6px;
+  height: 6px;
+  left: 60%;
+  top: 60%;
+  animation-delay: 0.4s;
+}
+
+.particle:nth-child(5) {
+  width: 8px;
+  height: 8px;
+  left: 70%;
+  top: 40%;
+  animation-delay: 0.5s;
+}
+
 /* ---------- Utility Classes ---------- */
 .flex {
   display: flex;
@@ -366,4 +550,9 @@ body.light {
   .tx-amount.negative {
     color: #dc2626;
   }
+
+  .modal-content,
+  .payment-content {
+    background: var(--card-bg-light);
   }
+}
