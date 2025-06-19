@@ -6,8 +6,11 @@
   <title>SuzzyPay • Secure Wallet</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@3.5.1/build/qrcode.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="dark">
   <div class="container">
@@ -16,22 +19,57 @@
         <i class="fas fa-wallet"></i>
         <span>SuzzyPay</span>
       </div>
+      <div id="authStatus">
+        <button class="btn btn-secondary" id="authBtn">Login</button>
+      </div>
       <button class="theme-toggle" id="themeToggle">
         <i class="fas fa-moon"></i>
       </button>
     </header>
 
-    <!-- Wallet Section -->
-    <div class="card">
-      <h2 class="card-title"><i class="fas fa-wallet"></i> My Wallet</h2>
-      <div id="noWallet" class="alert alert-info">
-        <p>No wallet found. Create or import one to start.</p>
+    <!-- Auth Section -->
+    <div class="card" id="authSection">
+      <div id="loginForm">
+        <h2 class="card-title"><i class="fas fa-sign-in-alt"></i> Login</h2>
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="login()">Login</button>
+        <button class="btn btn-secondary btn-block" onclick="showRegister()">Create Account</button>
       </div>
-      <div id="walletInfo" class="hidden">
+
+      <div id="registerForm" class="hidden">
+        <h2 class="card-title"><i class="fas fa-user-plus"></i> Register</h2>
+        <div class="form-group">
+          <label for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Password</label>
+          <input type="password" id="registerPassword" placeholder="••••••••">
+        </div>
+        <div class="form-group">
+          <label for="registerPasswordConfirm">Confirm Password</label>
+          <input type="password" id="registerPasswordConfirm" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="register()">Register</button>
+        <button class="btn btn-secondary btn-block" onclick="showLogin()">Back to Login</button>
+      </div>
+    </div>
+
+    <!-- Wallet Section -->
+    <div class="card hidden" id="walletSection">
+      <h2 class="card-title"><i class="fas fa-wallet"></i> My Wallet</h2>
+      <div id="walletInfo">
         <div class="form-group">
           <label>Your Wallet Address</label>
           <div class="address-display" id="addrDisplay">
-            <span id="addr">No wallet loaded</span>
+            <span id="addr">Loading...</span>
             <button class="copy-btn" onclick="copyToClipboard('addr')">
               <i class="far fa-copy"></i>
             </button>
@@ -40,16 +78,8 @@
         <div class="qr-container">
           <canvas id="qrCode"></canvas>
         </div>
-        <button class="btn btn-danger btn-block" onclick="clearWallet()">
-          <i class="fas fa-trash-alt"></i> Logout
-        </button>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-primary" onclick="generateWallet()">
-          <i class="fas fa-plus-circle"></i> Create Wallet
-        </button>
-        <button class="btn btn-secondary" onclick="importWallet()">
-          <i class="fas fa-file-import"></i> Import Wallet
+        <button class="btn btn-danger btn-block" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
         </button>
       </div>
     </div>
@@ -95,10 +125,27 @@
     </div>
   </div>
 
+  <!-- Firebase and App Configuration -->
   <script>
-    /* ---------- CONFIG ---------- */
-    const RPC_URL = "https://polygon-mumbai.g.alchemy.com/v2/demo"; // Replace with your RPC
-    const TOKEN_ADDRESS = "0xYourTokenAddress"; // Replace with your token contract
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBPF1VE82Y3VkZe6IibjqKxBC-XHjM_Wco",
+      authDomain: "chat-2024-ff149.firebaseapp.com",
+      databaseURL: "https://chat-2024-ff149-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "chat-2024-ff149",
+      storageBucket: "chat-2024-ff149.appspot.com",
+      messagingSenderId: "146349109253",
+      appId: "1:146349109253:android:e593afbf0584762519ac6c"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+
+    /* ---------- APP CONFIG ---------- */
+    const RPC_URL = "https://polygon-mumbai.g.alchemy.com/v2/demo";
+    const TOKEN_ADDRESS = "0xYourTokenAddress";
     const TOKEN_ABI = [
       "function balanceOf(address) view returns (uint256)",
       "function transfer(address to, uint amount) returns (bool)",
@@ -112,6 +159,7 @@
     let wallet;
     let tokenContract;
     let transactionHistory = [];
+    let currentUser = null;
 
     /* ---------- UTILS ---------- */
     const log = (message, type = 'info') => {
@@ -121,10 +169,6 @@
       logElement.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
       logElement.scrollTop = logElement.scrollHeight;
     };
-
-    const saveKey = (pk) => localStorage.setItem("suzzypay_pk", pk);
-    const loadSaved = () => localStorage.getItem("suzzypay_pk");
-    const clearKey = () => localStorage.removeItem("suzzypay_pk");
 
     const copyToClipboard = (elementId) => {
       const element = document.getElementById(elementId);
@@ -140,58 +184,108 @@
       return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
     };
 
-    /* ---------- WALLET FUNCTIONS ---------- */
-    async function generateWallet() {
+    const showSection = (id) => {
+      document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+    };
+
+    const showLogin = () => {
+      document.getElementById('loginForm').classList.remove('hidden');
+      document.getElementById('registerForm').classList.add('hidden');
+    };
+
+    const showRegister = () => {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('registerForm').classList.remove('hidden');
+    };
+
+    /* ---------- AUTH FUNCTIONS ---------- */
+    async function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
       try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        currentUser = userCredential.user;
+        log("Login successful!");
+        checkUserWallet();
+      } catch (error) {
+        log("Login failed: " + error.message, 'error');
+      }
+    }
+
+    async function register() {
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const confirmPassword = document.getElementById('registerPasswordConfirm').value;
+
+      if (password !== confirmPassword) {
+        log("Passwords don't match!", 'error');
+        return;
+      }
+
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        currentUser = userCredential.user;
+        log("Registration successful! Creating wallet...");
+        await createUserWallet();
+      } catch (error) {
+        log("Registration failed: " + error.message, 'error');
+      }
+    }
+
+    function logout() {
+      auth.signOut().then(() => {
+        currentUser = null;
+        wallet = null;
+        showSection('authSection');
+        document.getElementById('authBtn').textContent = 'Login';
+        log("Logged out successfully");
+      }).catch(error => {
+        log("Logout failed: " + error.message, 'error');
+      });
+    }
+
+    /* ---------- WALLET FUNCTIONS ---------- */
+    async function createUserWallet() {
+      try {
+        // Create new wallet
         wallet = ethers.Wallet.createRandom().connect(provider);
-        saveKey(wallet.privateKey);
+        
+        // Save to Firebase
+        await database.ref('users/' + currentUser.uid).set({
+          walletAddress: wallet.address,
+          privateKey: wallet.privateKey, // Note: In production, encrypt this!
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+
         await initTokenContract();
-        showWalletInfo();
-        log("New wallet created. Backup your private key!", 'success');
+        showWalletUI();
+        log("New wallet created and saved!");
       } catch (error) {
         log("Wallet creation failed: " + error.message, 'error');
       }
     }
 
-    async function importWallet() {
-      const pk = prompt("Enter your private key (0x...)");
-      if (!pk || !pk.startsWith("0x") || pk.length !== 66) {
-        log("Invalid private key", 'error');
-        return;
-      }
-      
+    async function checkUserWallet() {
       try {
-        wallet = new ethers.Wallet(pk, provider);
-        saveKey(pk);
-        await initTokenContract();
-        showWalletInfo();
-        log("Wallet imported!", 'success');
+        const snapshot = await database.ref('users/' + currentUser.uid).once('value');
+        const userData = snapshot.val();
+
+        if (userData && userData.privateKey) {
+          wallet = new ethers.Wallet(userData.privateKey, provider);
+          await initTokenContract();
+          showWalletUI();
+          log("Wallet loaded from Firebase");
+        } else {
+          await createUserWallet();
+        }
       } catch (error) {
-        log("Import failed: " + error.message, 'error');
+        log("Wallet check failed: " + error.message, 'error');
       }
     }
 
-    function clearWallet() {
-      if (!confirm("Are you sure? You will lose access if you don’t have your private key.")) return;
-      wallet = null;
-      clearKey();
-      document.getElementById('noWallet').classList.remove('hidden');
-      document.getElementById('walletInfo').classList.add('hidden');
-      document.getElementById('balanceSection').classList.add('hidden');
-      document.getElementById('sendSection').classList.add('hidden');
-      document.getElementById('historySection').classList.add('hidden');
-      document.getElementById('logSection').classList.add('hidden');
-      log("Wallet cleared.");
-    }
-
-    function showWalletInfo() {
-      document.getElementById('noWallet').classList.add('hidden');
-      document.getElementById('walletInfo').classList.remove('hidden');
-      document.getElementById('balanceSection').classList.remove('hidden');
-      document.getElementById('sendSection').classList.remove('hidden');
-      document.getElementById('historySection').classList.remove('hidden');
-      document.getElementById('logSection').classList.remove('hidden');
-      
+    function showWalletUI() {
       document.getElementById('addr').textContent = wallet.address;
       document.getElementById('addrDisplay').textContent = wallet.address;
       
@@ -204,6 +298,15 @@
           light: '#00000000'
         }
       });
+
+      showSection('walletSection');
+      document.getElementById('authBtn').textContent = 'Logout';
+      
+      // Show other sections
+      document.getElementById('balanceSection').classList.remove('hidden');
+      document.getElementById('sendSection').classList.remove('hidden');
+      document.getElementById('historySection').classList.remove('hidden');
+      document.getElementById('logSection').classList.remove('hidden');
       
       // Load balance
       showBalance();
@@ -242,32 +345,106 @@
         const tx = await tokenContract.transfer(to, amount);
         log(`Transaction sent: ${tx.hash}`);
         
+        // Save transaction to Firebase
+        await database.ref('transactions/' + currentUser.uid).push().set({
+          txHash: tx.hash,
+          to: to,
+          amount: amt,
+          timestamp: firebase.database.ServerValue.TIMESTAMP,
+          status: 'pending'
+        });
+
         await tx.wait();
         log("✅ Transaction confirmed!", 'success');
         
-        // Update balance & history
+        // Update transaction status in Firebase
+        await database.ref('transactions/' + currentUser.uid).orderByChild('txHash').equalTo(tx.hash).once('value', (snapshot) => {
+          snapshot.forEach(child => {
+            child.ref.update({ status: 'confirmed' });
+          });
+        });
+
+        // Update balance & clear form
         showBalance();
         document.getElementById('to').value = '';
         document.getElementById('amt').value = '';
+        
+        // Refresh transaction history
+        loadTransactionHistory();
       } catch (error) {
         log("Send failed: " + error.message, 'error');
       }
     }
 
-    /* ---------- INITIALIZE ---------- */
-    window.addEventListener('load', async () => {
-      const savedKey = loadSaved();
-      if (savedKey) {
-        try {
-          wallet = new ethers.Wallet(savedKey, provider);
-          await initTokenContract();
-          showWalletInfo();
-          log("Wallet loaded from storage.");
-        } catch (error) {
-          log("Failed to load wallet: " + error.message, 'error');
-          clearKey();
+    async function loadTransactionHistory() {
+      try {
+        const snapshot = await database.ref('transactions/' + currentUser.uid).once('value');
+        const transactions = snapshot.val();
+        const txList = document.getElementById('txList');
+        
+        txList.innerHTML = '';
+        
+        if (!transactions) {
+          document.getElementById('noTxs').classList.remove('hidden');
+          return;
         }
+        
+        document.getElementById('noTxs').classList.add('hidden');
+        
+        Object.entries(transactions).forEach(([key, tx]) => {
+          const listItem = document.createElement('li');
+          listItem.className = 'tx-item';
+          
+          listItem.innerHTML = `
+            <div>
+              <div><strong>To:</strong> ${formatAddress(tx.to)}</div>
+              <small>${new Date(tx.timestamp).toLocaleString()}</small>
+            </div>
+            <div class="tx-amount tx-sent">-${tx.amount} ${TOKEN_SYMBOL}</div>
+          `;
+          
+          txList.appendChild(listItem);
+        });
+      } catch (error) {
+        log("Failed to load transactions: " + error.message, 'error');
       }
+    }
+
+    /* ---------- INITIALIZATION ---------- */
+    window.addEventListener('load', () => {
+      // Auth state listener
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          currentUser = user;
+          document.getElementById('authBtn').textContent = 'Logout';
+          checkUserWallet();
+        } else {
+          showSection('authSection');
+          document.getElementById('authBtn').textContent = 'Login';
+        }
+      });
+
+      // Theme toggle
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('light');
+        const icon = document.querySelector('#themeToggle i');
+        if (document.body.classList.contains('light')) {
+          icon.classList.remove('fa-moon');
+          icon.classList.add('fa-sun');
+        } else {
+          icon.classList.remove('fa-sun');
+          icon.classList.add('fa-moon');
+        }
+      });
+
+      // Auth button
+      document.getElementById('authBtn').addEventListener('click', () => {
+        if (currentUser) {
+          logout();
+        } else {
+          showSection('authSection');
+        }
+      });
     });
   </script>
 </body>
