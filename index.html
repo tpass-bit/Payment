@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MyChain Pay</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.min.js"></script>
+</head>
+<body>
+  <h2 id="status">🔌 Wallet Disconnected</h2>
+  <button id="connectBtn">Connect Wallet</button>
+  <p id="addr"></p>
+
+  <h3>Send ETH / MATIC</h3>
+  <input id="to" placeholder="Receiver Address" size="44" /><br>
+  <input id="amount" placeholder="Amount (0.01)" /><br>
+  <button id="sendBtn">Send</button>
+
+  <script>
+    let provider, signer;
+
+    async function connect() {
+      if (!window.ethereum) return alert('MetaMask लावा!');
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      document.getElementById('status').innerText = '✅ Connected';
+      document.getElementById('addr').innerText = await signer.getAddress();
+    }
+
+    async function send() {
+      if (!signer) return alert('Connect पहिले!');
+      const to = document.getElementById('to').value.trim();
+      const val = document.getElementById('amount').value.trim();
+      try {
+        const tx = await signer.sendTransaction({
+          to,
+          value: ethers.parseEther(val)   // 0.01 → 10^16 wei
+        });
+        alert('Tx Sent! Hash: ' + tx.hash);
+      } catch (e) { alert(e.message); }
+    }
+
+    document.getElementById('connectBtn').onclick = connect;
+    document.getElementById('sendBtn').onclick = send;
+  </script>
+</body>
+</html>
