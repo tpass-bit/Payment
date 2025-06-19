@@ -3,46 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MyChain Pay</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.min.js"></script>
+  <title>ChainPay - Web3 Wallet</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #111; color: #eee; }
+    input, button { padding: 10px; margin: 5px 0; width: 100%; }
+  </style>
 </head>
 <body>
-  <h2 id="status">🔌 Wallet Disconnected</h2>
-  <button id="connectBtn">Connect Wallet</button>
-  <p id="addr"></p>
 
-  <h3>Send ETH / MATIC</h3>
-  <input id="to" placeholder="Receiver Address" size="44" /><br>
-  <input id="amount" placeholder="Amount (0.01)" /><br>
-  <button id="sendBtn">Send</button>
+<h2>🔗 Blockchain Wallet Payment</h2>
+<button onclick="connectWallet()">Connect Wallet</button>
+<p id="walletAddress">Not connected</p>
 
-  <script>
-    let provider, signer;
+<h3>Send ETH / MATIC</h3>
+<input id="toAddress" placeholder="Receiver address (0x...)" />
+<input id="ethAmount" placeholder="Amount (e.g. 0.01)" />
+<button onclick="sendETH()">Send ETH</button>
 
-    async function connect() {
-      if (!window.ethereum) return alert('MetaMask लावा!');
-      provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = await provider.getSigner();
-      document.getElementById('status').innerText = '✅ Connected';
-      document.getElementById('addr').innerText = await signer.getAddress();
+<script>
+  let provider, signer;
+
+  async function connectWallet() {
+    if (!window.ethereum) return alert("Please install MetaMask!");
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    const addr = await signer.getAddress();
+    document.getElementById("walletAddress").innerText = `✅ Connected: ${addr}`;
+  }
+
+  async function sendETH() {
+    if (!signer) return alert("Connect wallet first.");
+    const to = document.getElementById("toAddress").value.trim();
+    const amount = document.getElementById("ethAmount").value.trim();
+    try {
+      const tx = await signer.sendTransaction({
+        to: to,
+        value: ethers.parseEther(amount)
+      });
+      alert(`Transaction sent! Hash:\n${tx.hash}`);
+    } catch (err) {
+      alert(err.message);
     }
+  }
+</script>
 
-    async function send() {
-      if (!signer) return alert('Connect पहिले!');
-      const to = document.getElementById('to').value.trim();
-      const val = document.getElementById('amount').value.trim();
-      try {
-        const tx = await signer.sendTransaction({
-          to,
-          value: ethers.parseEther(val)   // 0.01 → 10^16 wei
-        });
-        alert('Tx Sent! Hash: ' + tx.hash);
-      } catch (e) { alert(e.message); }
-    }
-
-    document.getElementById('connectBtn').onclick = connect;
-    document.getElementById('sendBtn').onclick = send;
-  </script>
 </body>
 </html>
