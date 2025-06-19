@@ -1,0 +1,240 @@
+/* ---------- Base ---------- */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #121212;
+  color: #ffffff;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.light {
+  background-color: #f5f5f5;
+  color: #222;
+}
+
+.container {
+  max-width: 500px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* ---------- Header ---------- */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #333;
+}
+
+.logo {
+  font-size: 1.4rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: #1e1e1e;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px #00000040;
+  transition: background 0.3s;
+}
+
+body.light .card {
+  background: #fff;
+  box-shadow: 0 4px 12px #00000020;
+}
+
+.card-title {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Form ---------- */
+.form-group {
+  margin-bottom: 15px;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="email"] {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #2a2a2a;
+  color: #fff;
+  box-sizing: border-box;
+  outline: none;
+  transition: background 0.3s;
+}
+
+body.light input {
+  background: #f1f1f1;
+  color: #000;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  transition: background 0.3s;
+}
+
+.btn-block {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.btn-primary {
+  background: #5c6bc0;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #3f51b5;
+}
+
+.btn-secondary {
+  background: #888;
+  color: #fff;
+}
+
+.btn-secondary:hover {
+  background: #666;
+}
+
+.btn-danger {
+  background: #e53935;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #c62828;
+}
+
+/* ---------- Address + QR ---------- */
+.address-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+body.light .address-display {
+  background: #e0e0e0;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: #ccc;
+}
+
+.copy-btn:hover {
+  color: #fff;
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+/* ---------- Balance ---------- */
+.balance-display {
+  font-size: 1.6rem;
+  text-align: center;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+/* ---------- Transactions ---------- */
+.tx-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tx-item {
+  background: #2a2a2a;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+body.light .tx-item {
+  background: #e0e0e0;
+}
+
+.tx-amount {
+  font-weight: bold;
+  color: #f44336;
+  text-align: right;
+}
+
+.alert {
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #333;
+  color: #fff;
+  text-align: center;
+}
+
+body.light .alert {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* ---------- Log ---------- */
+pre#log {
+  background: #000;
+  color: #ccc;
+  padding: 12px;
+  border-radius: 8px;
+  height: 160px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+body.light pre#log {
+  background: #f1f1f1;
+  color: #222;
+}
+
+/* ---------- Hidden ---------- */
+.hidden {
+  display: none !important;
+}
