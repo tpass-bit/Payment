@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuzzyCoin • Store</title>
+  <title>SuzzyCoin • Premium Store</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
@@ -12,19 +12,34 @@
   <link rel="stylesheet" href="css/store.css">
 </head>
 <body>
-  <!-- Header -->
+  <!-- Header with Countdown Timer -->
   <header class="store-header">
     <div class="logo">
       <i class="fas fa-store"></i>
       <h1>SuzzyStore</h1>
     </div>
-    <div class="user-controls">
-      <span class="user-coins" id="userCoinBalance">0 SC</span>
-      <button class="back-btn" onclick="window.location.href='index.html'">
-        <i class="fas fa-wallet"></i> My Wallet
-      </button>
+    <div class="header-right">
+      <div class="offer-timer" id="offerTimer">
+        <i class="fas fa-clock"></i>
+        <span id="timeLeft">00:00:00</span>
+      </div>
+      <div class="user-controls">
+        <span class="user-coins" id="userCoinBalance">0 SC</span>
+        <button class="back-btn" onclick="window.location.href='index.html'">
+          <i class="fas fa-wallet"></i> My Wallet
+        </button>
+      </div>
     </div>
   </header>
+
+  <!-- Special Offer Banner -->
+  <div class="offer-banner" id="specialOffer">
+    <div class="offer-content">
+      <span class="offer-tag">LIMITED TIME!</span>
+      <h3 id="offerTitle">Special Discount</h3>
+      <p id="offerDescription">Selected items at 50% off!</p>
+    </div>
+  </div>
 
   <!-- Store Items Grid -->
   <div class="store-container">
@@ -33,10 +48,10 @@
       <button class="category-btn" data-category="skins">Skins</button>
       <button class="category-btn" data-category="powerups">Powerups</button>
       <button class="category-btn" data-category="collectibles">Collectibles</button>
+      <button class="category-btn" data-category="offers">Special Offers</button>
     </div>
 
     <div class="items-grid" id="itemsGrid">
-      <!-- Items will load here -->
       <div class="loader">
         <i class="fas fa-spinner fa-spin"></i>
         Loading store...
@@ -51,10 +66,23 @@
       <h3 id="modalItemName">Item Name</h3>
       <img id="modalItemImage" src="" alt="Item" class="modal-item-img">
       <p id="modalItemDesc">Item description goes here</p>
-      <div class="modal-price">
-        <i class="fas fa-coins"></i>
-        <span id="modalItemPrice">0</span> SC
+      
+      <div class="modal-details">
+        <div class="stock-info">
+          <i class="fas fa-box-open"></i>
+          <span id="modalItemStock">100</span> left in stock
+        </div>
+        
+        <div class="price-container">
+          <div class="original-price" id="originalPrice">200 SC</div>
+          <div class="modal-price">
+            <i class="fas fa-coins"></i>
+            <span id="modalItemPrice">100</span> SC
+            <span class="discount-badge" id="discountBadge">50% OFF</span>
+          </div>
+        </div>
       </div>
+      
       <button class="buy-btn" id="confirmPurchase">
         <i class="fas fa-shopping-cart"></i> Confirm Purchase
       </button>
@@ -62,7 +90,7 @@
   </div>
 
   <script>
-    // Firebase Config (Same as index.html)
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyBPF1VE82Y3VkZe6IibjqKxBC-XHjM_Wco",
       authDomain: "chat-2024-ff149.firebaseapp.com",
@@ -81,14 +109,18 @@
     // Global Variables
     let currentUser = null;
     let selectedItem = null;
+    let storeItems = [];
+    let specialOffer = null;
+    let offerEndTime = null;
 
     // Initialize Store
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUser = user;
         loadUserBalance();
-        loadStoreItems();
+        loadStoreData();
         setupCategoryFilters();
+        startOfferTimer();
       } else {
         window.location.href = "index.html";
       }
@@ -101,35 +133,143 @@
       document.getElementById('userCoinBalance').textContent = coins + ' SC';
     }
 
-    // Load Store Items from Firebase
-    async function loadStoreItems() {
+    // Load Store Data (Items + Offers)
+    async function loadStoreData() {
       const itemsGrid = document.getElementById('itemsGrid');
       itemsGrid.innerHTML = '<div class="loader"><i class="fas fa-spinner fa-spin"></i> Loading store...</div>';
 
-      const snapshot = await db.ref('storeItems').once('value');
-      const items = snapshot.val();
+      // Load items and special offer simultaneously
+      const [itemsSnapshot, offerSnapshot] = await Promise.all([
+        db.ref('storeItems').once('value'),
+        db.ref('specialOffer').once('value')
+      ]);
 
-      if (!items) {
+      // Process special offer
+      specialOffer = offerSnapshot.val();
+      if (specialOffer) {
+        offerEndTime = new Date(specialOffer.endTime);
+        updateOfferBanner();
+      }
+
+      // Process items
+      storeItems = [];
+      itemsSnapshot.forEach(child => {
+        const item = child.val();
+        item.id = child.key;
+        
+        // Apply special offer discount if applicable
+        if (specialOffer && specialOffer.discountedItems.includes(item.id)) {
+          item.discountedPrice = Math.floor(item.price * (1 - specialOffer.discountPercent / 100));
+          item.onSale = true;
+        } else {
+          item.discountedPrice = item.price;
+          item.onSale = false;
+        }
+        
+        storeItems.push(item);
+      });
+
+      renderStoreItems();
+    }
+
+    // Render items to the grid
+    function renderStoreItems() {
+      const itemsGrid = document.getElementById('itemsGrid');
+      itemsGrid.innerHTML = '';
+
+      if (storeItems.length === 0) {
         itemsGrid.innerHTML = '<p class="no-items">No items available</p>';
         return;
       }
 
-      itemsGrid.innerHTML = '';
-      Object.entries(items).forEach(([id, item]) => {
+      storeItems.forEach(item => {
         const itemElement = document.createElement('div');
-        itemElement.className = `store-item ${item.category}`;
-        itemElement.dataset.id = id;
+        itemElement.className = `store-item ${item.category} ${item.onSale ? 'sale-item' : ''}`;
+        itemElement.dataset.id = item.id;
         itemElement.innerHTML = `
-          <div class="item-badge ${item.rare ? 'rare' : ''}">${item.rare ? 'RARE' : ''}</div>
+          ${item.stock <= 0 ? '<div class="item-badge out-of-stock">SOLD OUT</div>' : ''}
+          ${item.rare ? '<div class="item-badge rare">RARE</div>' : ''}
+          ${item.onSale ? '<div class="item-badge sale">SALE</div>' : ''}
+          
           <img src="${item.image || 'https://via.placeholder.com/150'}" alt="${item.name}">
           <h4>${item.name}</h4>
-          <div class="item-price">
-            <i class="fas fa-coins"></i> ${item.price}
+          
+          <div class="item-footer">
+            ${item.onSale ? `
+              <div class="price-container">
+                <span class="original-price">${item.price} SC</span>
+                <span class="discounted-price">
+                  <i class="fas fa-coins"></i> ${item.discountedPrice} SC
+                </span>
+              </div>
+            ` : `
+              <div class="item-price">
+                <i class="fas fa-coins"></i> ${item.price} SC
+              </div>
+            `}
+            
+            <div class="item-stock">
+              <i class="fas fa-box"></i> ${item.stock}
+            </div>
           </div>
         `;
-        itemElement.addEventListener('click', () => openPurchaseModal(id, item));
+        
+        if (item.stock > 0) {
+          itemElement.addEventListener('click', () => openPurchaseModal(item));
+        } else {
+          itemElement.classList.add('out-of-stock');
+        }
+        
         itemsGrid.appendChild(itemElement);
       });
+    }
+
+    // Update special offer banner
+    function updateOfferBanner() {
+      if (!specialOffer) {
+        document.getElementById('specialOffer').classList.add('hidden');
+        return;
+      }
+      
+      const offerBanner = document.getElementById('specialOffer');
+      offerBanner.classList.remove('hidden');
+      document.getElementById('offerTitle').textContent = specialOffer.title;
+      document.getElementById('offerDescription').textContent = specialOffer.description;
+      
+      // Set background based on offer type
+      if (specialOffer.type === "flash") {
+        offerBanner.style.background = "linear-gradient(135deg, #f59e0b, #ef4444)";
+      } else {
+        offerBanner.style.background = "linear-gradient(135deg, #6366f1, #8b5cf6)";
+      }
+    }
+
+    // Countdown timer for special offer
+    function startOfferTimer() {
+      if (!offerEndTime) return;
+      
+      const timerElement = document.getElementById('timeLeft');
+      
+      const updateTimer = () => {
+        const now = new Date();
+        const diff = offerEndTime - now;
+        
+        if (diff <= 0) {
+          timerElement.textContent = "EXPIRED";
+          document.getElementById('specialOffer').classList.add('offer-expired');
+          return;
+        }
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        timerElement.textContent = 
+          `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      };
+      
+      updateTimer();
+      setInterval(updateTimer, 1000);
     }
 
     // Category Filtering
@@ -141,21 +281,45 @@
           
           const category = btn.dataset.category;
           document.querySelectorAll('.store-item').forEach(item => {
-            item.style.display = (category === 'all' || item.classList.contains(category)) 
-              ? 'block' 
-              : 'none';
+            const show = (
+              category === 'all' || 
+              item.classList.contains(category) ||
+              (category === 'offers' && item.classList.contains('sale-item'))
+            );
+            
+            item.style.display = show ? 'block' : 'none';
           });
         });
       });
     }
 
     // Purchase Modal
-    function openPurchaseModal(itemId, item) {
-      selectedItem = { id: itemId, ...item };
+    function openPurchaseModal(item) {
+      selectedItem = item;
+      
+      // Update modal content
       document.getElementById('modalItemName').textContent = item.name;
       document.getElementById('modalItemImage').src = item.image || 'https://via.placeholder.com/150';
       document.getElementById('modalItemDesc').textContent = item.description || 'No description available';
-      document.getElementById('modalItemPrice').textContent = item.price;
+      document.getElementById('modalItemStock').textContent = item.stock;
+      
+      // Price display
+      const originalPrice = document.getElementById('originalPrice');
+      const modalPrice = document.getElementById('modalItemPrice');
+      const discountBadge = document.getElementById('discountBadge');
+      
+      if (item.onSale) {
+        originalPrice.textContent = `${item.price} SC`;
+        originalPrice.style.display = 'block';
+        modalPrice.textContent = item.discountedPrice;
+        discountBadge.textContent = `${specialOffer.discountPercent}% OFF`;
+        discountBadge.style.display = 'inline-block';
+      } else {
+        originalPrice.style.display = 'none';
+        modalPrice.textContent = item.price;
+        discountBadge.style.display = 'none';
+      }
+      
       document.getElementById('purchaseModal').classList.remove('hidden');
     }
 
@@ -165,38 +329,63 @@
 
     // Handle Purchase
     document.getElementById('confirmPurchase').addEventListener('click', async () => {
-      if (!selectedItem) return;
+      if (!selectedItem || selectedItem.stock <= 0) return;
       
       try {
-        // Check user balance
+        // 1. Verify user balance
         const userSnapshot = await db.ref('users/' + currentUser.uid).once('value');
         const userData = userSnapshot.val();
         const currentCoins = userData.coins || 0;
+        const priceToPay = selectedItem.onSale ? selectedItem.discountedPrice : selectedItem.price;
         
-        if (currentCoins < selectedItem.price) {
+        if (currentCoins < priceToPay) {
           alert("Not enough coins!");
           return;
         }
         
-        // Deduct coins
-        await db.ref('users/' + currentUser.uid).update({
-          coins: currentCoins - selectedItem.price
-        });
+        // 2. Verify stock is still available
+        const itemSnapshot = await db.ref(`storeItems/${selectedItem.id}`).once('value');
+        const currentStock = itemSnapshot.val().stock;
         
-        // Add to user's purchases
-        const purchaseData = {
+        if (currentStock <= 0) {
+          alert("This item is out of stock!");
+          closeModal();
+          loadStoreData(); // Refresh store
+          return;
+        }
+        
+        // 3. Process transaction (atomic updates)
+        const updates = {};
+        
+        // Deduct from user balance
+        updates[`users/${currentUser.uid}/coins`] = currentCoins - priceToPay;
+        
+        // Reduce item stock
+        updates[`storeItems/${selectedItem.id}/stock`] = currentStock - 1;
+        
+        // Add to purchase history
+        const newPurchaseRef = db.ref(`userPurchases/${currentUser.uid}`).push();
+        updates[`userPurchases/${currentUser.uid}/${newPurchaseRef.key}`] = {
           itemId: selectedItem.id,
           itemName: selectedItem.name,
-          price: selectedItem.price,
-          purchasedAt: firebase.database.ServerValue.TIMESTAMP
+          pricePaid: priceToPay,
+          originalPrice: selectedItem.price,
+          wasOnSale: selectedItem.onSale,
+          purchaseDate: firebase.database.ServerValue.TIMESTAMP
         };
         
-        await db.ref('userPurchases/' + currentUser.uid).push().set(purchaseData);
+        // Apply all updates
+        await db.ref().update(updates);
         
-        // Update UI
+        // 4. Update UI
         loadUserBalance();
         closeModal();
-        alert(`Purchased ${selectedItem.name} successfully!`);
+        
+        // Show success message
+        alert(`Success! You purchased ${selectedItem.name} for ${priceToPay} SC`);
+        
+        // Refresh store to show updated stock
+        loadStoreData();
         
       } catch (error) {
         alert("Purchase failed: " + error.message);
