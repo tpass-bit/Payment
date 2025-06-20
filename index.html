@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuzzyPay • Secure Wallet</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
+  <title>Coin System • SuzzyCoin</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
@@ -12,71 +11,75 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Auth Screen -->
-    <div class="auth-box" id="authBox">
-      <h1><i class="fas fa-wallet"></i> SuzzyPay</h1>
-      <div id="loginForm">
-        <input type="email" id="loginEmail" placeholder="Email">
-        <input type="password" id="loginPassword" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <p class="switch-mode" onclick="showRegister()">Create Account</p>
+  <!-- Auth Screen -->
+  <div class="auth-screen" id="authScreen">
+    <div class="logo">
+      <i class="fas fa-coins"></i>
+      <h1>SuzzyCoin</h1>
+    </div>
+    
+    <div id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email">
+      <input type="password" id="loginPassword" placeholder="Password">
+      <button onclick="login()"><i class="fas fa-sign-in-alt"></i> Login</button>
+      <p class="switch-auth" onclick="showRegister()">Create Account</p>
+    </div>
+    
+    <div id="registerForm" class="hidden">
+      <input type="email" id="registerEmail" placeholder="Email">
+      <input type="password" id="registerPassword" placeholder="Password">
+      <button onclick="register()"><i class="fas fa-user-plus"></i> Register</button>
+      <p class="switch-auth" onclick="showLogin()">Back to Login</p>
+    </div>
+  </div>
+
+  <!-- Main App (Hidden Initially) -->
+  <div class="app-container hidden" id="appContainer">
+    <header>
+      <div class="user-info">
+        <i class="fas fa-user-circle"></i>
+        <span id="userEmail">user@example.com</span>
       </div>
-      <div id="registerForm" class="hidden">
-        <input type="email" id="registerEmail" placeholder="Email">
-        <input type="password" id="registerPassword" placeholder="Password">
-        <button onclick="register()">Register</button>
-        <p class="switch-mode" onclick="showLogin()">Back to Login</p>
+      <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
+    </header>
+    
+    <div class="coin-balance">
+      <h3>Your Coin Balance</h3>
+      <div class="balance-amount" id="coinBalance">0</div>
+      <small>SuzzyCoins (SC)</small>
+    </div>
+    
+    <div class="action-buttons">
+      <button class="action-btn" onclick="showSendForm()">
+        <i class="fas fa-paper-plane"></i> Send Coins
+      </button>
+      <button class="action-btn" onclick="refreshBalance()">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+    
+    <!-- Send Coin Form -->
+    <div class="send-form hidden" id="sendForm">
+      <h3><i class="fas fa-exchange-alt"></i> Send Coins</h3>
+      <input type="email" id="receiverEmail" placeholder="Receiver's Email">
+      <input type="number" id="sendAmount" placeholder="Amount">
+      <div class="form-buttons">
+        <button class="cancel-btn" onclick="hideSendForm()">Cancel</button>
+        <button class="confirm-btn" onclick="sendCoins()">Send</button>
       </div>
     </div>
-
-    <!-- Wallet Dashboard (Hidden Initially) -->
-    <div class="wallet-dashboard hidden" id="walletDashboard">
-      <header>
-        <h2><i class="fas fa-wallet"></i> My Wallet</h2>
-        <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
-      </header>
-
-      <div class="wallet-card">
-        <div class="wallet-address">
-          <label>Public Key (Shareable)</label>
-          <div class="address-box" id="publicKey">Loading...</div>
-          <button onclick="copyToClipboard('publicKey')"><i class="fas fa-copy"></i> Copy</button>
-        </div>
-
-        <div class="wallet-address">
-          <label>Private Key (Keep Secret!)</label>
-          <div class="address-box" id="privateKey">••••••••••••</div>
-          <button onclick="revealPrivateKey()"><i class="fas fa-eye"></i> Show</button>
-        </div>
-
-        <div class="balance-box">
-          <span id="balanceAmount">0</span>
-          <span>SUZ</span>
-          <button onclick="updateBalance()"><i class="fas fa-sync-alt"></i></button>
-        </div>
-      </div>
-
-      <!-- Send Tokens Form -->
-      <div class="send-form">
-        <h3><i class="fas fa-paper-plane"></i> Send SUZ</h3>
-        <input type="text" id="sendTo" placeholder="Recipient Public Key">
-        <input type="number" id="sendAmount" placeholder="Amount">
-        <button onclick="sendTokens()">Send Now</button>
-      </div>
-
-      <!-- Transaction History -->
-      <div class="tx-history">
-        <h3><i class="fas fa-history"></i> Transactions</h3>
-        <div class="tx-list" id="txList">
-          <p>No transactions yet</p>
-        </div>
+    
+    <!-- Transaction History -->
+    <div class="tx-history">
+      <h3><i class="fas fa-history"></i> Recent Transactions</h3>
+      <div class="tx-list" id="txList">
+        <p class="no-tx">No transactions yet</p>
       </div>
     </div>
   </div>
 
   <script>
-    // Firebase Config (Replace with your keys)
+    // Firebase Configuration (Your Keys)
     const firebaseConfig = {
       apiKey: "AIzaSyBPF1VE82Y3VkZe6IibjqKxBC-XHjM_Wco",
       authDomain: "chat-2024-ff149.firebaseapp.com",
@@ -92,22 +95,11 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // Blockchain Config
-    const RPC_URL = "https://polygon-mumbai.g.alchemy.com/v2/demo";
-    const TOKEN_ADDRESS = "0xYourTokenContract";
-    const TOKEN_ABI = [
-      "function balanceOf(address) view returns (uint256)",
-      "function transfer(address to, uint amount) returns (bool)"
-    ];
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    let wallet;
-    let tokenContract;
-
     // DOM Elements
-    const authBox = document.getElementById('authBox');
-    const walletDashboard = document.getElementById('walletDashboard');
+    const authScreen = document.getElementById('authScreen');
+    const appContainer = document.getElementById('appContainer');
 
-    /* ===== FIREBASE AUTH ===== */
+    /* ===== AUTH FUNCTIONS ===== */
     function showRegister() {
       document.getElementById('loginForm').classList.add('hidden');
       document.getElementById('registerForm').classList.remove('hidden');
@@ -124,7 +116,7 @@
       
       try {
         await auth.signInWithEmailAndPassword(email, password);
-        loadWallet();
+        loadUserData();
       } catch (error) {
         alert("Login failed: " + error.message);
       }
@@ -135,8 +127,14 @@
       const password = document.getElementById('registerPassword').value;
       
       try {
-        await auth.createUserWithEmailAndPassword(email, password);
-        createNewWallet();
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        // Initialize user with 100 coins
+        await db.ref('users/' + userCredential.user.uid).set({
+          email: email,
+          coins: 100,
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+        loadUserData();
       } catch (error) {
         alert("Registration failed: " + error.message);
       }
@@ -144,106 +142,162 @@
 
     function logout() {
       auth.signOut();
-      walletDashboard.classList.add('hidden');
-      authBox.classList.remove('hidden');
+      appContainer.classList.add('hidden');
+      authScreen.classList.remove('hidden');
     }
 
-    /* ===== WALLET MANAGEMENT ===== */
-    function generateCleanKey() {
-      // Creates keys like "2937MC2" (no symbols)
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No 0,O,1,I
-      let result = '';
-      for (let i = 0; i < 12; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return result;
-    }
-
-    async function createNewWallet() {
-      const privateKey = generateCleanKey();
-      wallet = new ethers.Wallet(privateKey, provider);
-      
-      // Save to Firebase
-      await db.ref('users/' + auth.currentUser.uid).set({
-        publicKey: wallet.address,
-        privateKey: privateKey
-      });
-      
-      loadWallet();
-    }
-
-    async function loadWallet() {
+    /* ===== COIN SYSTEM FUNCTIONS ===== */
+    async function loadUserData() {
       const user = auth.currentUser;
       if (!user) return;
 
+      document.getElementById('userEmail').textContent = user.email;
+      
+      // Load coin balance
       const snapshot = await db.ref('users/' + user.uid).once('value');
       const userData = snapshot.val();
+      document.getElementById('coinBalance').textContent = userData.coins || 0;
+      
+      // Load transactions
+      loadTransactions();
+      
+      // Show app
+      authScreen.classList.add('hidden');
+      appContainer.classList.remove('hidden');
+    }
 
-      if (userData) {
-        wallet = new ethers.Wallet(userData.privateKey, provider);
-        document.getElementById('publicKey').textContent = wallet.address;
-        document.getElementById('privateKey').textContent = userData.privateKey;
-        
-        // Initialize token contract
-        tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, wallet);
-        
-        // Show dashboard
-        authBox.classList.add('hidden');
-        walletDashboard.classList.remove('hidden');
-        
-        // Load data
-        updateBalance();
-        loadTransactions();
-      } else {
-        createNewWallet();
+    async function refreshBalance() {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      const snapshot = await db.ref('users/' + user.uid).once('value');
+      document.getElementById('coinBalance').textContent = snapshot.val().coins || 0;
+    }
+
+    function showSendForm() {
+      document.getElementById('sendForm').classList.remove('hidden');
+    }
+
+    function hideSendForm() {
+      document.getElementById('sendForm').classList.add('hidden');
+    }
+
+    async function sendCoins() {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      const receiverEmail = document.getElementById('receiverEmail').value;
+      const amount = parseInt(document.getElementById('sendAmount').value);
+      
+      if (!receiverEmail || !amount || amount <= 0) {
+        alert("Please enter valid details!");
+        return;
       }
-    }
-
-    /* ===== TOKEN OPERATIONS ===== */
-    async function updateBalance() {
-      const balance = await tokenContract.balanceOf(wallet.address);
-      document.getElementById('balanceAmount').textContent = ethers.formatUnits(balance, 18);
-    }
-
-    async function sendTokens() {
-      const toAddress = document.getElementById('sendTo').value;
-      const amount = document.getElementById('sendAmount').value;
       
       try {
-        const tx = await tokenContract.transfer(toAddress, ethers.parseUnits(amount, 18));
-        await tx.wait();
-        updateBalance();
+        // Find receiver UID by email
+        const usersSnapshot = await db.ref('users').once('value');
+        let receiverUid = null;
+        
+        usersSnapshot.forEach(child => {
+          if (child.val().email === receiverEmail) {
+            receiverUid = child.key;
+          }
+        });
+        
+        if (!receiverUid) {
+          alert("User not found!");
+          return;
+        }
+        
+        // Check sender balance
+        const senderSnapshot = await db.ref('users/' + user.uid).once('value');
+        const senderCoins = senderSnapshot.val().coins || 0;
+        
+        if (senderCoins < amount) {
+          alert("Insufficient coins!");
+          return;
+        }
+        
+        // Update balances
+        await db.ref('users/' + user.uid).update({
+          coins: senderCoins - amount
+        });
+        
+        const receiverSnapshot = await db.ref('users/' + receiverUid).once('value');
+        const receiverCoins = receiverSnapshot.val().coins || 0;
+        
+        await db.ref('users/' + receiverUid).update({
+          coins: receiverCoins + amount
+        });
+        
+        // Record transaction
+        const txData = {
+          from: user.email,
+          to: receiverEmail,
+          amount: amount,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        };
+        
+        await db.ref('transactions').push().set(txData);
+        
+        // Refresh UI
+        refreshBalance();
         loadTransactions();
-        alert("Transaction successful!");
+        hideSendForm();
+        alert("Coins sent successfully!");
       } catch (error) {
-        alert("Send failed: " + error.message);
+        alert("Error: " + error.message);
       }
     }
 
     async function loadTransactions() {
-      // Implement transaction loading from blockchain or Firebase
-      // Placeholder for actual implementation
-    }
-
-    /* ===== UTILITIES ===== */
-    function copyToClipboard(elementId) {
-      const text = document.getElementById(elementId).textContent;
-      navigator.clipboard.writeText(text);
-      alert("Copied to clipboard!");
-    }
-
-    function revealPrivateKey() {
-      const privateKeyElement = document.getElementById('privateKey');
-      if (privateKeyElement.textContent === '••••••••••••') {
-        privateKeyElement.textContent = wallet.privateKey;
-      } else {
-        privateKeyElement.textContent = '••••••••••••';
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      const txList = document.getElementById('txList');
+      txList.innerHTML = '';
+      
+      const snapshot = await db.ref('transactions')
+        .orderByChild('timestamp')
+        .limitToLast(5)
+        .once('value');
+      
+      if (!snapshot.exists()) {
+        txList.innerHTML = '<p class="no-tx">No transactions yet</p>';
+        return;
       }
+      
+      snapshot.forEach(tx => {
+        const txData = tx.val();
+        const txElement = document.createElement('div');
+        txElement.className = 'tx-item';
+        
+        if (txData.from === user.email) {
+          txElement.innerHTML = `
+            <i class="fas fa-arrow-up tx-out"></i>
+            <div class="tx-details">
+              <span class="tx-amount">-${txData.amount} SC</span>
+              <span class="tx-info">To: ${txData.to}</span>
+            </div>
+          `;
+        } else {
+          txElement.innerHTML = `
+            <i class="fas fa-arrow-down tx-in"></i>
+            <div class="tx-details">
+              <span class="tx-amount">+${txData.amount} SC</span>
+              <span class="tx-info">From: ${txData.from}</span>
+            </div>
+          `;
+        }
+        
+        txList.prepend(txElement);
+      });
     }
 
     // Initialize auth state
     auth.onAuthStateChanged(user => {
-      if (user) loadWallet();
+      if (user) loadUserData();
     });
   </script>
 </body>
