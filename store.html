@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuzzyCoin • Store</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/store.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="store-header">
+    <div class="logo">
+      <i class="fas fa-store"></i>
+      <h1>SuzzyStore</h1>
+    </div>
+    <div class="user-controls">
+      <span class="user-coins" id="userCoinBalance">0 SC</span>
+      <button class="back-btn" onclick="window.location.href='index.html'">
+        <i class="fas fa-wallet"></i> My Wallet
+      </button>
+    </div>
+  </header>
+
+  <!-- Store Items Grid -->
+  <div class="store-container">
+    <div class="category-selector">
+      <button class="category-btn active" data-category="all">All Items</button>
+      <button class="category-btn" data-category="skins">Skins</button>
+      <button class="category-btn" data-category="powerups">Powerups</button>
+      <button class="category-btn" data-category="collectibles">Collectibles</button>
+    </div>
+
+    <div class="items-grid" id="itemsGrid">
+      <!-- Items will load here -->
+      <div class="loader">
+        <i class="fas fa-spinner fa-spin"></i>
+        Loading store...
+      </div>
+    </div>
+  </div>
+
+  <!-- Purchase Modal -->
+  <div class="modal hidden" id="purchaseModal">
+    <div class="modal-content">
+      <span class="close-modal" onclick="closeModal()">&times;</span>
+      <h3 id="modalItemName">Item Name</h3>
+      <img id="modalItemImage" src="" alt="Item" class="modal-item-img">
+      <p id="modalItemDesc">Item description goes here</p>
+      <div class="modal-price">
+        <i class="fas fa-coins"></i>
+        <span id="modalItemPrice">0</span> SC
+      </div>
+      <button class="buy-btn" id="confirmPurchase">
+        <i class="fas fa-shopping-cart"></i> Confirm Purchase
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Firebase Config (Same as index.html)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBPF1VE82Y3VkZe6IibjqKxBC-XHjM_Wco",
+      authDomain: "chat-2024-ff149.firebaseapp.com",
+      databaseURL: "https://chat-2024-ff149-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "chat-2024-ff149",
+      storageBucket: "chat-2024-ff149.appspot.com",
+      messagingSenderId: "146349109253",
+      appId: "1:146349109253:android:e593afbf0584762519ac6c"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // Global Variables
+    let currentUser = null;
+    let selectedItem = null;
+
+    // Initialize Store
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        loadUserBalance();
+        loadStoreItems();
+        setupCategoryFilters();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+
+    // Load User Coin Balance
+    async function loadUserBalance() {
+      const snapshot = await db.ref('users/' + currentUser.uid).once('value');
+      const coins = snapshot.val().coins || 0;
+      document.getElementById('userCoinBalance').textContent = coins + ' SC';
+    }
+
+    // Load Store Items from Firebase
+    async function loadStoreItems() {
+      const itemsGrid = document.getElementById('itemsGrid');
+      itemsGrid.innerHTML = '<div class="loader"><i class="fas fa-spinner fa-spin"></i> Loading store...</div>';
+
+      const snapshot = await db.ref('storeItems').once('value');
+      const items = snapshot.val();
+
+      if (!items) {
+        itemsGrid.innerHTML = '<p class="no-items">No items available</p>';
+        return;
+      }
+
+      itemsGrid.innerHTML = '';
+      Object.entries(items).forEach(([id, item]) => {
+        const itemElement = document.createElement('div');
+        itemElement.className = `store-item ${item.category}`;
+        itemElement.dataset.id = id;
+        itemElement.innerHTML = `
+          <div class="item-badge ${item.rare ? 'rare' : ''}">${item.rare ? 'RARE' : ''}</div>
+          <img src="${item.image || 'https://via.placeholder.com/150'}" alt="${item.name}">
+          <h4>${item.name}</h4>
+          <div class="item-price">
+            <i class="fas fa-coins"></i> ${item.price}
+          </div>
+        `;
+        itemElement.addEventListener('click', () => openPurchaseModal(id, item));
+        itemsGrid.appendChild(itemElement);
+      });
+    }
+
+    // Category Filtering
+    function setupCategoryFilters() {
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          const category = btn.dataset.category;
+          document.querySelectorAll('.store-item').forEach(item => {
+            item.style.display = (category === 'all' || item.classList.contains(category)) 
+              ? 'block' 
+              : 'none';
+          });
+        });
+      });
+    }
+
+    // Purchase Modal
+    function openPurchaseModal(itemId, item) {
+      selectedItem = { id: itemId, ...item };
+      document.getElementById('modalItemName').textContent = item.name;
+      document.getElementById('modalItemImage').src = item.image || 'https://via.placeholder.com/150';
+      document.getElementById('modalItemDesc').textContent = item.description || 'No description available';
+      document.getElementById('modalItemPrice').textContent = item.price;
+      document.getElementById('purchaseModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('purchaseModal').classList.add('hidden');
+    }
+
+    // Handle Purchase
+    document.getElementById('confirmPurchase').addEventListener('click', async () => {
+      if (!selectedItem) return;
+      
+      try {
+        // Check user balance
+        const userSnapshot = await db.ref('users/' + currentUser.uid).once('value');
+        const userData = userSnapshot.val();
+        const currentCoins = userData.coins || 0;
+        
+        if (currentCoins < selectedItem.price) {
+          alert("Not enough coins!");
+          return;
+        }
+        
+        // Deduct coins
+        await db.ref('users/' + currentUser.uid).update({
+          coins: currentCoins - selectedItem.price
+        });
+        
+        // Add to user's purchases
+        const purchaseData = {
+          itemId: selectedItem.id,
+          itemName: selectedItem.name,
+          price: selectedItem.price,
+          purchasedAt: firebase.database.ServerValue.TIMESTAMP
+        };
+        
+        await db.ref('userPurchases/' + currentUser.uid).push().set(purchaseData);
+        
+        // Update UI
+        loadUserBalance();
+        closeModal();
+        alert(`Purchased ${selectedItem.name} successfully!`);
+        
+      } catch (error) {
+        alert("Purchase failed: " + error.message);
+      }
+    });
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+      if (event.target === document.getElementById('purchaseModal')) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
